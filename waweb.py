@@ -70,6 +70,36 @@ def load_msg(num):
     driver.execute_script("window.Store.ConversationMsgs = window.require('WAWebChatLoadMessages');")
     driver.execute_script("await window.Store.ConversationMsgs.loadEarlierMsgs(document.chat);")
 
+def decrypt_media(msg):
+    print(msg["directPath"])
+    print(msg["encFilehash"])
+    print(msg["filehash"])
+    print(msg["mediaKey"])
+    print(msg["mediaKeyTimestamp"])
+    print(msg["type"])
+    print(msg)
+
+    driver.execute_script(f"""document.decryptedMedia = await window.Store.DownloadManager.downloadAndMaybeDecrypt({{
+	    directPath: "{msg["directPath"]}",
+	    encFilehash: "{msg["encFilehash"]}",
+	    filehash: "{msg["filehash"]}",
+	    mediaKey: "{msg["mediaKey"]}",
+	    mediaKeyTimestamp: "{msg["mediaKeyTimestamp"]}",
+	    type: "{msg["type"]}",
+	    signal: (new AbortController).signal
+    }});""")
+    
+
+    base64str = driver.execute_script("return document.base64str = btoa(String.fromCharCode.apply(null, new Uint8Array(document.decryptedMedia)));")
+
+    return base64str
+
+def check64(s):
+    try:
+        return base64.b64encode(base64.b64decode(s)) == s
+    except Exception:
+        return False
+
 app = Flask(__name__)
 session = {"logged_in": False}
 
@@ -95,17 +125,39 @@ def logged_in():
 @app.route("/chats")
 def chats():
     load_chats = driver.execute_script("window.Store = Object.assign({}, window.require('WAWebCollections'));")
-
+    driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
     contacts = driver.execute_script("return window.Store.Chat.map(contacts => contacts.formattedTitle);")
     
-    latest_msg = driver.execute_script("return window.Store.Chat._models.flatMap(chatd => window.Store.Chat.get(chatd.id._serialized).msgs._models.slice(-1).map(msg => msg.body));")
+    #latest_msg = driver.execute_script("return window.Store.Chat._models.flatMap(chatd => window.Store.Chat.get(chatd.id._serialized).msgs._models.slice(-1).map(msg => msg.body));")
     
+    all_l_msg = []
+    latest_msg = driver.execute_script("""return window.Store.Chat._models.flatMap(chatd => window.Store.Chat.get(chatd.id._serialized).msgs._models.slice(-1).map(m => (    {
+        body: m.body,
+        timestamp: m.t,
+        from: m.from,
+        type: m.type,
+	    directPath: m.directPath,
+	    encFilehash: m.encFilehash,
+	    filehash: m.filehash,
+	    mediaKey: m.mediaKey,
+	    mediaKeyTimestamp: m.mediaKeyTimestamp,
+    })));""");
+    
+    for l_msg in latest_msg:
+        print(l_msg)
+        if l_msg["type"] == "chat":
+            all_l_msg.append(l_msg["body"])
+        elif l_msg["type"] == "image":
+            all_l_msg.append(decrypt_media(l_msg))
+    
+    print(all_l_msg)
+
     load_send()
-    contact_msg = dict(zip(contacts,latest_msg))
+    contact_msg = dict(zip(contacts,all_l_msg))
     
     yourname = driver.execute_script("return window.Store.Contact.get(window.Store.User.getMeUser()._serialized).name")
 
-    return render_template("chats.html", contactmsg=contact_msg, yourname=yourname)
+    return render_template("chats.html", contactmsg=contact_msg, yourname=yourname,check64=check64)
 
 @app.route("/processnum", methods=['POST'])
 def process_num():
@@ -130,8 +182,21 @@ def chat_session():
         body: m.body,
         timestamp: m.t,
         from: m.from,
+        type: m.type,
+	    directPath: m.directPath,
+	    encFilehash: m.encFilehash,
+	    filehash: m.filehash,
+	    mediaKey: m.mediaKey,
+	    mediaKeyTimestamp: m.mediaKeyTimestamp,
     }}));""")
-    messages = [msg["body"] for msg in msgdata]
+
+    for msg in msgdata:
+        if msg["type"] == "chat":
+            messages.append(msg["body"])
+        elif msg["type"] == "image":
+            message.append(decrypt_media(msg))
+
+    #messages = [msg["body"] for msg in msgdata]
     who = driver.execute_script("return document.msgdata.map(msg => msg.from._serialized).map(num => window.Store.Contact.get(num).name);")
     time = [datetime.fromtimestamp(timestamp["timestamp"]).time().strftime("%H:%M") for timestamp in msgdata]
 
@@ -143,7 +208,7 @@ def chat_session():
 
     print(who_msg_t)
 
-    return render_template("messages.html", who_msg_t=who_msg_t, num=num)
+    return render_template("messages.html", who_msg_t=who_msg_t, num=num, check64=check64)
 
 @app.route("/send", methods=['POST'])
 def send():

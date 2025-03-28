@@ -23,7 +23,11 @@
     </form>
     {% for who,msg,t in who_msg_t %}
         <b>{{ who }}&nbsp;&nbsp;&nbsp;{{ t }}</b>
-        <p>{{ msg }}</p>
+        {% if check64(msg) %}
+            <img src="data:image/jpeg;base64,{{ msg }}" width="86" height="64">
+        {% else %}
+            <p>{{ msg }}</p>
+        {% endif %}
     {% endfor %}
 </body>
 </html>

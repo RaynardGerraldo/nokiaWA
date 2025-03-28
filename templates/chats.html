@@ -16,7 +16,11 @@
                     <b>{{ c }}</b>
                 </button>
             </form>
-            <p>{{ msg }}</p>
+            {% if check64(msg) %}
+                <img src="data:image/jpeg;base64,{{ msg }}" width="86" height="64">
+            {% else %}
+                <p>{{ msg }}</p>
+            {% endif %}
             <hr>
         {% endfor %}
     </ul>
