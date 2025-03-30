@@ -24,7 +24,9 @@
     {% for who,msg,t in who_msg_t %}
         <b>{{ who }}&nbsp;&nbsp;&nbsp;{{ t }}</b>
         {% if check64(msg) %}
-            <img src="data:image/jpeg;base64,{{ msg }}" width="86" height="64">
+            <div>
+                <img src="data:image/jpeg;base64,{{ msg }}" width="86" height="64">
+            </div>
         {% else %}
             <p>{{ msg }}</p>
         {% endif %}

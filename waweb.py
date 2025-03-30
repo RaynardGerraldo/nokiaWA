@@ -71,15 +71,7 @@ def load_msg(num):
     driver.execute_script("await window.Store.ConversationMsgs.loadEarlierMsgs(document.chat);")
 
 def decrypt_media(msg):
-    print(msg["directPath"])
-    print(msg["encFilehash"])
-    print(msg["filehash"])
-    print(msg["mediaKey"])
-    print(msg["mediaKeyTimestamp"])
-    print(msg["type"])
-    print(msg)
-
-    driver.execute_script(f"""document.decryptedMedia = await window.Store.DownloadManager.downloadAndMaybeDecrypt({{
+    driver.execute_script(f"""try {{ document.decryptedMedia = await window.Store.DownloadManager.downloadAndMaybeDecrypt({{
 	    directPath: "{msg["directPath"]}",
 	    encFilehash: "{msg["encFilehash"]}",
 	    filehash: "{msg["filehash"]}",
@@ -87,16 +79,33 @@ def decrypt_media(msg):
 	    mediaKeyTimestamp: "{msg["mediaKeyTimestamp"]}",
 	    type: "{msg["type"]}",
 	    signal: (new AbortController).signal
-    }});""")
+    }}) }} catch(e) {{ if(e.status && e.status == 404) document.decryptedMedia = undefined }};""")
     
 
-    base64str = driver.execute_script("return document.base64str = btoa(String.fromCharCode.apply(null, new Uint8Array(document.decryptedMedia)));")
+    #base64str = driver.execute_script("return document.base64str = await btoa(String.fromCharCode.apply(null, new Uint8Array(document.decryptedMedia)));")
+    
+    driver.execute_script("""document.base64str = (arrayBuffer) =>
+        new Promise((resolve, reject) => {
+            const blob = new Blob([arrayBuffer], {
+                type: 'application/octet-stream',
+            });
+            const fileReader = new FileReader();
+            fileReader.onload = () => {
+                const [, data] = fileReader.result.split(',');
+                resolve(data);
+            };
+            fileReader.onerror = (e) => reject(e);
+            fileReader.readAsDataURL(blob);
+        });""")
+
+    base64str = driver.execute_script("if(document.decryptedMedia != undefined) return await document.base64str(document.decryptedMedia)")
 
     return base64str
 
 def check64(s):
     try:
-        return base64.b64encode(base64.b64decode(s)) == s
+        if s.startswith("/9j/"):
+            return True
     except Exception:
         return False
 
@@ -149,6 +158,8 @@ def chats():
             all_l_msg.append(l_msg["body"])
         elif l_msg["type"] == "image":
             all_l_msg.append(decrypt_media(l_msg))
+        else:
+            all_l_msg.append("Not implemented yet")
     
     print(all_l_msg)
 
@@ -172,6 +183,7 @@ def process_num():
 
 @app.route("/chatsession")
 def chat_session():
+    messages = []
     num = request.args.get("num", None)
     if num is None:
         return "<p>No chats available</p>"
@@ -194,7 +206,7 @@ def chat_session():
         if msg["type"] == "chat":
             messages.append(msg["body"])
         elif msg["type"] == "image":
-            message.append(decrypt_media(msg))
+            messages.append(decrypt_media(msg))           
 
     #messages = [msg["body"] for msg in msgdata]
     who = driver.execute_script("return document.msgdata.map(msg => msg.from._serialized).map(num => window.Store.Contact.get(num).name);")
