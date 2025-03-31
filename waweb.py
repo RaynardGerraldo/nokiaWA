@@ -9,6 +9,7 @@ from datetime import datetime
 import time
 import base64
 import threading
+import os
 
 user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36'
 chrome_options = webdriver.ChromeOptions()
@@ -30,6 +31,10 @@ def login():
     canvas_png = base64.b64decode(canvas_base64)
 
     # write qr png data to actual png
+    directory = "static/images"
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+        print(f"Directory '{directory}' created.")
     with open("static/images/qrcode.png", "wb") as f:
         f.write(canvas_png)
 
