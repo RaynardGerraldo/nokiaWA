@@ -1,4 +1,4 @@
-from flask import Flask, render_template,redirect,url_for,request
+from flask import Flask, render_template,redirect,url_for,request, Response
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -22,6 +22,7 @@ chrome_options.add_argument(f'user-agent={user_agent}')
 driver = webdriver.Chrome(options=chrome_options)
 driver.get("https://web.whatsapp.com/")
 
+media_download = {}
 def login():
     WebDriverWait(driver,30).until(EC.presence_of_element_located((By.TAG_NAME, 'canvas')))
 
@@ -106,13 +107,6 @@ def decrypt_media(msg):
 
     return base64str
     
-def check64(s):
-    try:
-        if s.startswith("/9j/"):
-            return True
-    except Exception:
-        return False
-
 app = Flask(__name__)
 session = {"logged_in": False}
 
@@ -149,7 +143,7 @@ def chats():
         timestamp: m.t,
         from: m.from,
         type: m.type,
-        caption: m.caption || ""
+        caption: m.caption || "",
 	    directPath: m.directPath,
 	    encFilehash: m.encFilehash,
 	    filehash: m.filehash,
@@ -175,7 +169,7 @@ def chats():
     
     yourname = driver.execute_script("return window.Store.Contact.get(window.Store.User.getMeUser()._serialized).name")
 
-    return render_template("chats.html", contactmsg=contact_msg, yourname=yourname,check64=check64)
+    return render_template("chats.html", contactmsg=contact_msg, yourname=yourname)
 
 @app.route("/processnum", methods=['POST'])
 def process_num():
@@ -202,7 +196,7 @@ def chat_session():
         timestamp: m.t,
         from: m.from,
         type: m.type,
-        caption: m.caption || ""
+        caption: m.caption || "",
 	    directPath: m.directPath,
 	    encFilehash: m.encFilehash,
 	    filehash: m.filehash,
@@ -230,7 +224,7 @@ def chat_session():
 
     print(who_msg_t)
 
-    return render_template("messages.html", who_msg_t=who_msg_t, num=num, check64=check64)
+    return render_template("messages.html", who_msg_t=who_msg_t, num=num)
 
 @app.route("/send", methods=['POST'])
 def send():
@@ -238,3 +232,25 @@ def send():
     num = request.form.get("num")
     send_message(num,msg_to_send)
     return redirect(url_for("chat_session", num=num))
+
+@app.route("/downmedia", methods=['POST', 'GET'])
+def download_media():
+    if not media_download and request.method == 'POST':
+        media = request.form.get("media")
+        media_type = request.form.get("type")
+        media_download["type"] = media_type
+        media_download["media"] = media
+
+    file_bytes = base64.b64decode(media_download["media"])
+ 
+    if media_download["type"] == "image":
+        response = Response(file_bytes, mimetype="image/jpeg")
+        response.headers["Content-Disposition"] = "attachment; filename=image.jpeg"
+    elif media_download["type"] == "video":
+        response = Response(file_bytes, mimetype="video/mp4")
+        response.headers["Content-Disposition"] = "attachment; filename=video.mp4"
+
+    if request.method == 'GET':
+        media_download.clear()
+
+    return response

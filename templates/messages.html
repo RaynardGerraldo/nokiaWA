@@ -26,10 +26,11 @@
         {% if msg is iterable and not msg is string %}
             {% for type,body,capt in msg %}
                 <p>{{ type }}</p>
-                <form action="/downloadmedia" method="POST">
-                    <input type="hidden" name="filehash" value="{{ filehash }}">
+                <form action="/downmedia" method="POST">
+                    <input type="hidden" name="media" value="{{ body }}">
+                    <input type="hidden" name="type" value="{{ type }}">
                     <button type="submit" style="border: none; background: none; padding: 0; cursor: pointer;">
-                        <img src="data:image/jpeg;base64,{{ body }}" width="72" height="40">
+                        <img src="data:image/jpeg;base64,{{ body }}" width="120" height="120">
                     </button>
                 </form>
                 <p>{{ capt }}</p>
