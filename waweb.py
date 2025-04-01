@@ -86,7 +86,6 @@ def decrypt_media(msg):
 	    signal: (new AbortController).signal
     }}) }} catch(e) {{ if(e.status && e.status == 404) document.decryptedMedia = undefined }};""")
     
-
     #base64str = driver.execute_script("return document.base64str = await btoa(String.fromCharCode.apply(null, new Uint8Array(document.decryptedMedia)));")
     
     driver.execute_script("""document.base64str = (arrayBuffer) =>
@@ -106,7 +105,7 @@ def decrypt_media(msg):
     base64str = driver.execute_script("if(document.decryptedMedia != undefined) return await document.base64str(document.decryptedMedia)")
 
     return base64str
-
+    
 def check64(s):
     try:
         if s.startswith("/9j/"):
@@ -150,6 +149,7 @@ def chats():
         timestamp: m.t,
         from: m.from,
         type: m.type,
+        caption: m.caption || ""
 	    directPath: m.directPath,
 	    encFilehash: m.encFilehash,
 	    filehash: m.filehash,
@@ -162,7 +162,9 @@ def chats():
         if l_msg["type"] == "chat":
             all_l_msg.append(l_msg["body"])
         elif l_msg["type"] == "image":
-            all_l_msg.append(decrypt_media(l_msg))
+            all_l_msg.append([(l_msg["type"], decrypt_media(l_msg), l_msg["caption"])])
+        elif l_msg["type"] == "video":
+            all_l_msg.append([(l_msg["type"], l_msg["body"], l_msg["caption"])])
         else:
             all_l_msg.append("Not implemented yet")
     
@@ -200,6 +202,7 @@ def chat_session():
         timestamp: m.t,
         from: m.from,
         type: m.type,
+        caption: m.caption || ""
 	    directPath: m.directPath,
 	    encFilehash: m.encFilehash,
 	    filehash: m.filehash,
@@ -211,7 +214,9 @@ def chat_session():
         if msg["type"] == "chat":
             messages.append(msg["body"])
         elif msg["type"] == "image":
-            messages.append(decrypt_media(msg))           
+            messages.append([(msg["type"], decrypt_media(msg), msg["caption"])])
+        elif msg["type"] == "video":
+            messages.append([(msg["type"], msg["body"], msg["caption"])])
 
     #messages = [msg["body"] for msg in msgdata]
     who = driver.execute_script("return document.msgdata.map(msg => msg.from._serialized).map(num => window.Store.Contact.get(num).name);")

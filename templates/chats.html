@@ -16,8 +16,12 @@
                     <b>{{ c }}</b>
                 </button>
             </form>
-            {% if check64(msg) %}
-                <img src="data:image/jpeg;base64,{{ msg }}" width="100" height="100">
+            {% if msg is iterable and not msg is string %}
+                {% for type,body,capt in msg %}
+                    <p>{{ type }}</p>
+                    <img src="data:image/jpeg;base64,{{ body }}" width="72" height="40">
+                    <p>{{ capt }}</p>
+                {% endfor %}
             {% else %}
                 <p>{{ msg }}</p>
             {% endif %}

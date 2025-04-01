@@ -23,10 +23,17 @@
     </form>
     {% for who,msg,t in who_msg_t %}
         <b>{{ who }}&nbsp;&nbsp;&nbsp;{{ t }}</b>
-        {% if check64(msg) %}
-            <div>
-                <img src="data:image/jpeg;base64,{{ msg }}" width="140" height="140">
-            </div>
+        {% if msg is iterable and not msg is string %}
+            {% for type,body,capt in msg %}
+                <p>{{ type }}</p>
+                <form action="/downloadmedia" method="POST">
+                    <input type="hidden" name="filehash" value="{{ filehash }}">
+                    <button type="submit" style="border: none; background: none; padding: 0; cursor: pointer;">
+                        <img src="data:image/jpeg;base64,{{ body }}" width="72" height="40">
+                    </button>
+                </form>
+                <p>{{ capt }}</p>
+            {% endfor %}
         {% else %}
             <p>{{ msg }}</p>
         {% endif %}
