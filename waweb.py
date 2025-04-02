@@ -10,6 +10,7 @@ import time
 import base64
 import threading
 import os
+import ast
 
 user_agent = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/60.0.3112.50 Safari/537.36'
 chrome_options = webdriver.ChromeOptions()
@@ -87,7 +88,6 @@ def decrypt_media(msg):
 	    signal: (new AbortController).signal
     }}) }} catch(e) {{ if(e.status && e.status == 404) document.decryptedMedia = undefined }};""")
     
-    #base64str = driver.execute_script("return document.base64str = await btoa(String.fromCharCode.apply(null, new Uint8Array(document.decryptedMedia)));")
     
     driver.execute_script("""document.base64str = (arrayBuffer) =>
         new Promise((resolve, reject) => {
@@ -134,8 +134,6 @@ def chats():
     load_chats = driver.execute_script("window.Store = Object.assign({}, window.require('WAWebCollections'));")
     driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
     contacts = driver.execute_script("return window.Store.Chat.map(contacts => contacts.formattedTitle);")
-    
-    #latest_msg = driver.execute_script("return window.Store.Chat._models.flatMap(chatd => window.Store.Chat.get(chatd.id._serialized).msgs._models.slice(-1).map(msg => msg.body));")
     
     all_l_msg = []
     latest_msg = driver.execute_script("""return window.Store.Chat._models.flatMap(chatd => window.Store.Chat.get(chatd.id._serialized).msgs._models.slice(-1).map(m => (    {
@@ -210,9 +208,8 @@ def chat_session():
         elif msg["type"] == "image":
             messages.append([(msg["type"], decrypt_media(msg), msg["caption"])])
         elif msg["type"] == "video":
-            messages.append([(msg["type"], msg["body"], msg["caption"])])
-
-    #messages = [msg["body"] for msg in msgdata]
+            messages.append([(msg["type"], msg, msg["caption"])])
+           
     who = driver.execute_script("return document.msgdata.map(msg => msg.from._serialized).map(num => window.Store.Contact.get(num).name);")
     time = [datetime.fromtimestamp(timestamp["timestamp"]).time().strftime("%H:%M") for timestamp in msgdata]
 
@@ -235,18 +232,23 @@ def send():
 
 @app.route("/downmedia", methods=['POST', 'GET'])
 def download_media():
+    if media_download and request.method == 'POST':
+        media_download.clear()
+
     if not media_download and request.method == 'POST':
         media = request.form.get("media")
         media_type = request.form.get("type")
+
         media_download["type"] = media_type
         media_download["media"] = media
 
-    file_bytes = base64.b64decode(media_download["media"])
- 
     if media_download["type"] == "image":
+        file_bytes = base64.b64decode(media_download["media"])
         response = Response(file_bytes, mimetype="image/jpeg")
         response.headers["Content-Disposition"] = "attachment; filename=image.jpeg"
     elif media_download["type"] == "video":
+        media = ast.literal_eval(media_download["media"])
+        file_bytes = base64.b64decode(decrypt_media(media))
         response = Response(file_bytes, mimetype="video/mp4")
         response.headers["Content-Disposition"] = "attachment; filename=video.mp4"
 
