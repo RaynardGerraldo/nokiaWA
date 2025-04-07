@@ -51,6 +51,10 @@
             <p>{{ msg }}</p>
         {% endif %}
     {% endfor %}
+    <form action="/pgdown" method="POST">
+        <input type="hidden" name="num" value="{{ num }}">
+        <button type="submit">Down</button>
+    </form>
 </body>
 </html>
 

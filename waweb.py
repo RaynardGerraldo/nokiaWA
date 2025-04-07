@@ -24,8 +24,10 @@ driver = webdriver.Chrome(options=chrome_options)
 driver.get("https://web.whatsapp.com/")
 
 media_download = {}
-
+session_reload = {}
 def login():
+    if session["logged_in"] is True:
+       return False 
     if os.path.exists("static/images/qrcode.png"):
         os.remove("static/images/qrcode.png")
     WebDriverWait(driver,30).until(EC.presence_of_element_located((By.TAG_NAME, 'canvas')))
@@ -42,10 +44,17 @@ def login():
         print(f"Directory '{directory}' created.")
     with open("static/images/qrcode.png", "wb") as f:
         f.write(canvas_png)
+    
+    return True
 
 def check_login():
     if WebDriverWait(driver,60).until(EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Chats']"))):
         print("hey it works")
+        driver.execute_script("window.Store = Object.assign({}, window.require('WAWebCollections'));")
+        contact_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized);")
+
+        for num in contact_num:
+            session_reload[num] = 0
         session["logged_in"] = True
 
 def load_send():
@@ -133,10 +142,12 @@ session = {"logged_in": False}
 
 @app.route("/login")
 def hello_world():
-    login()
-    response = render_template('qr.html')
-    threading.Thread(target=check_login).start()
-    return response
+    if login():
+        response = render_template('qr.html')
+        threading.Thread(target=check_login).start()
+        return response
+    else:
+        return "<p>Ur logged in bro..</p>"
 
 @app.route("/logged-in")
 def logged_in():
@@ -146,10 +157,8 @@ def logged_in():
 
 @app.route("/chats")
 def chats():
-    load_chats = driver.execute_script("window.Store = Object.assign({}, window.require('WAWebCollections'));")
     driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
     contacts = driver.execute_script("return window.Store.Chat.map(contacts => contacts.formattedTitle);")
-    
     latest_msg = driver.execute_script("""return window.Store.Chat._models.flatMap(chatd => window.Store.Chat.get(chatd.id._serialized).msgs._models.slice(-1).map(m => (    {
         body: m.body,
         timestamp: m.t,
@@ -188,8 +197,10 @@ def chat_session():
     if num is None:
         return "<p>No chats available</p>"
     
-    # get all chats of num here and display
-    load_msg(num)
+    if session_reload[num] == 0:
+        load_msg(num)
+        session_reload[num] += 1
+        
     msgdata = driver.execute_script(f"""return document.msgdata = window.Store.Chat.get('{num}').msgs._models.map(m => ({{
         body: m.body,
         timestamp: m.t,
@@ -251,3 +262,14 @@ def download_media():
         media_download.clear()
 
     return response
+
+@app.route("/pgdown", methods=['POST'])
+def down():
+    num = request.form.get("num")
+    driver.execute_script(f"document.lengthc = await window.Store.Chat.find('{num}')")
+    length_old = driver.execute_script("return document.lengthc.msgs.length")
+    length_new = driver.execute_script("return document.lengthc.msgs.length")
+    while length_old == length_new:
+        load_msg(num)
+        length_new = driver.execute_script("return document.lengthc.msgs.length")
+    return redirect(url_for("chat_session", num=num))
