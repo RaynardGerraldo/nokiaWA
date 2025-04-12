@@ -268,8 +268,10 @@ def down():
     num = request.form.get("num")
     driver.execute_script(f"document.lengthc = await window.Store.Chat.find('{num}')")
     length_old = driver.execute_script("return document.lengthc.msgs.length")
-    length_new = 0
+    length_new = driver.execute_script("return document.lengthc.msgs.length")
     while length_old == length_new:
         load_msg(num)
         length_new = driver.execute_script("return document.lengthc.msgs.length")
+        print("old: ", length_old)
+        print("new: ", length_new)
     return redirect(url_for("chat_session", num=num))
