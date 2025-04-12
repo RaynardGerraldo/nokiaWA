@@ -268,7 +268,7 @@ def down():
     num = request.form.get("num")
     driver.execute_script(f"document.lengthc = await window.Store.Chat.find('{num}')")
     length_old = driver.execute_script("return document.lengthc.msgs.length")
-    length_new = driver.execute_script("return document.lengthc.msgs.length")
+    length_new = 0
     while length_old == length_new:
         load_msg(num)
         length_new = driver.execute_script("return document.lengthc.msgs.length")
