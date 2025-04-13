@@ -29,6 +29,8 @@ and set the variable chromedriver_path on line (in waweb.py) to the full path of
 
 Download release 131.0.6778.264 for your architecture, unzip ,set above mentioned variables to the full path of chrome and chromedriver executables.
 
+Note: Not installing this will use your default ChromeDriver instead. That version may or may not work.
+
 ## Usage
 
 ```
