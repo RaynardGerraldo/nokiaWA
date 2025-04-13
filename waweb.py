@@ -20,9 +20,18 @@ chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument('--headless=new')
 chrome_options.add_argument(f'user-agent={user_agent}')
 
-driver = webdriver.Chrome(options=chrome_options)
-driver.get("https://web.whatsapp.com/")
+chrome_path = "" # your chrome path here
+chromedriver_path = "" # your chromedriver path here
 
+if chromedriver_path and chrome_path:
+    chrome_options.binary_location = chrome_path
+    service = Service(executable_path=chromedriver_path)
+    driver = webdriver.Chrome(service=service,options=chrome_options)
+else:
+    driver = webdriver.Chrome(options=chrome_options)
+
+driver.get("https://web.whatsapp.com/")
+print("Chromedriver Version: ", driver.capabilities["chrome"]["chromedriverVersion"])
 media_download = {}
 
 def login():

@@ -4,13 +4,29 @@ An attempt to have Whatsapp on old Nokia phones
 
 Self Host this please, for your own safety
 
-
+Notice: Currently working for older versions of ChromeDriver (tested on 131.0.6778.264 and 125).
 
 ## Dependencies
 
 - Python
 - Flask
 - Selenium
+
+### Chromedriver Instruction
+[Chromedriver Linux,Win,Mac](https://googlechromelabs.github.io/chrome-for-testing/#stable)
+
+replace the stable version in the download links with "131.0.6778.264", download both "chrome" and "chromedriver" for your platform
+
+unzip both zip files, for ease of access, move the chromedriver executable to the chrome folder
+
+set the variable chrome_path (in waweb.py) to the full path of your chrome executable
+
+and set the variable chromedriver_path on line (in waweb.py) to the full path of your chromedriver executable
+
+[Chromedriver Termux Android](https://github.com/termux-user-repository/chromium-builder/releases/)
+
+Download release 131.0.6778.264 for your architecture, unzip ,set above mentioned variables to the full path of chrome and chromedriver executables.
+
 ## Usage
 
 ```
