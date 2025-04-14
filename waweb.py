@@ -1,5 +1,5 @@
 from flask import Flask, render_template,redirect,url_for,request, Response
-from selenium import webdriver
+import undetected_chromedriver as uc
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
@@ -13,7 +13,7 @@ import os
 import ast
 
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-chrome_options = webdriver.ChromeOptions()
+chrome_options = uc.ChromeOptions()
 
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
@@ -28,9 +28,9 @@ chromedriver_path = "" # your chromedriver path here
 if chromedriver_path and chrome_path:
     chrome_options.binary_location = chrome_path
     service = Service(executable_path=chromedriver_path)
-    driver = webdriver.Chrome(service=service,options=chrome_options)
+    driver = uc.Chrome(service=service,options=chrome_options)
 else:
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = uc.Chrome(options=chrome_options)
 
 driver.get("https://web.whatsapp.com/")
 print("Chromedriver Version: ", driver.capabilities["chrome"]["chromedriverVersion"])
