@@ -9,8 +9,11 @@ Notice: If there is a "SessionNotCreatedException: DevToolsActivePort file doesn
 ## Dependencies
 
 - Python
+
+(pip install)
 - Flask
-- Selenium
+- selenium
+- undetected-chromedriver
 
 ## Usage
 
