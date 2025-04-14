@@ -29,7 +29,9 @@ flask --app waweb run
 
 Currently a very early version of the program, lack of features but you can send and read messages (no images yet)
 
-### Chromedriver Instruction
+## Chromedriver Instruction
+Note: Do this only if you face the errors mentioned in notice. Default ChromeDriver should work just fine.
+
 [Chromedriver Linux,Win,Mac](https://googlechromelabs.github.io/chrome-for-testing/#stable)
 
 replace the stable version in the download links with "131.0.6778.264", download both "chrome" and "chromedriver" for your platform
@@ -43,8 +45,6 @@ and set the variable chromedriver_path on line (in waweb.py) to the full path of
 [Chromedriver Termux Android](https://github.com/termux-user-repository/chromium-builder/releases/)
 
 Download release 131.0.6778.264 for your architecture, unzip ,set above mentioned variables to the full path of chrome and chromedriver executables.
-
-Note: Do this only if you face the errors mentioned in notice. Default ChromeDriver mostly work.
 
 ## Roadmap
 
