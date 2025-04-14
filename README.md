@@ -12,6 +12,20 @@ Notice: If there is a "SessionNotCreatedException: DevToolsActivePort file doesn
 - Flask
 - Selenium
 
+## Usage
+
+```
+flask --app waweb run
+
+-- go to /login, scan qr code
+-- console should output "hey it works" or check "/logged-in", go to /chats after
+-- click on any contact you want
+-- now you can read and send message
+
+```
+
+Currently a very early version of the program, lack of features but you can send and read messages (no images yet)
+
 ### Chromedriver Instruction
 [Chromedriver Linux,Win,Mac](https://googlechromelabs.github.io/chrome-for-testing/#stable)
 
@@ -27,26 +41,10 @@ and set the variable chromedriver_path on line (in waweb.py) to the full path of
 
 Download release 131.0.6778.264 for your architecture, unzip ,set above mentioned variables to the full path of chrome and chromedriver executables.
 
-Note: Not installing this will use your default ChromeDriver instead. That version may or may not work.
-
-## Usage
-
-```
-flask --app waweb run
-
--- go to /login, scan qr code
--- console should output "hey it works" or check "/logged-in", go to /chats after
--- click on any contact you want
--- now you can read and send message
-
-```
-
-Currently a very early version of the program, lack of features but you can send and read messages (no images yet)
-
+Note: Do this only if you face the errors mentioned in notice. Default ChromeDriver mostly work.
 
 ## Roadmap
 
-- Scroll down for older messages
 - Media support
 - And more...
 
