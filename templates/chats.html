@@ -24,7 +24,9 @@
                 {% else %}
                   {% for type,body,capt in msg %}
                       <p>{{ type }}</p>
-                      <img src="data:image/jpeg;base64,{{ body }}" width="120" height="120">
+                      {% if "application" not in type %}
+                        <img src="data:image/jpeg;base64,{{ body }}" width="120" height="120">
+                      {% endif %}
                       <p>{{ capt }}</p>
                   {% endfor %}
                 {% endif %}

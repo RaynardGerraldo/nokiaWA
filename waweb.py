@@ -114,6 +114,8 @@ def gather_msg(msgs):
             messages.append([(msg["type"], decrypt_media(msg), msg["caption"])])
         elif msg["type"] == "video":
             messages.append(msg)
+        elif msg["mimetype"] == "application/pdf":
+            messages.append([(msg["mimetype"], decrypt_media(msg), msg["caption"])])
         else:
             messages.append("")
     return messages
@@ -175,6 +177,7 @@ def chats():
         timestamp: m.t,
         from: m.from,
         type: m.type,
+        mimetype: m.mimetype,
         caption: m.caption || "",
 	    directPath: m.directPath,
 	    encFilehash: m.encFilehash,
@@ -217,6 +220,7 @@ def chat_session():
         timestamp: m.t,
         from: m.from,
         type: m.type,
+        mimetype: m.mimetype,
         caption: m.caption || "",
 	    directPath: m.directPath,
 	    encFilehash: m.encFilehash,
@@ -269,6 +273,12 @@ def download_media():
         response = Response(file_bytes, mimetype="video/mp4")
         response.headers["Content-Disposition"] = "attachment; filename=video.mp4"
 
+    elif media_download["type"] == "application/pdf":
+        file_bytes = base64.b64decode(media_download["media"])
+        response = Response(file_bytes, mimetype="application/pdf")
+        response.headers["Content-Disposition"] = "attachment; filename=doc.pdf"
+
+    
     if request.method == 'GET':
         media_download.clear()
 

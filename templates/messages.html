@@ -41,10 +41,16 @@
                         <input type="hidden" name="type" value="{{ type }}">
                         <button type="submit" style="border: none; background: none; padding: 0; cursor: pointer;">
                             <input type="hidden" name="media" value="{{ body }}">
-                            <img src="data:image/jpeg;base64,{{ body }}" width="120" height="120">
+                            {% if "application" not in type %}
+                                <img src="data:image/jpeg;base64,{{ body }}" width="120" height="120">
+                            {% else %}
+                                <p>{{ capt }}</p>
+                            {% endif %}
                         </button>
                     </form>
-                    <p>{{ capt }}</p>
+                    {% if "application" not in type %}
+                        <p>{{ capt }}</p>
+                    {% endif %}
                 {% endfor %}
             {% endif %}
         {% else %}
