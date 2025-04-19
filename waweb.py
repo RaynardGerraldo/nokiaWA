@@ -11,6 +11,7 @@ import base64
 import threading
 import os
 import ast
+import mimetypes
 
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 chrome_options = webdriver.ChromeOptions()
@@ -114,7 +115,7 @@ def gather_msg(msgs):
             messages.append([(msg["type"], decrypt_media(msg), msg["caption"])])
         elif msg["type"] == "video":
             messages.append(msg)
-        elif msg["mimetype"] == "application/pdf":
+        elif msg["mimetype"] and "application" in msg["mimetype"]:
             messages.append([(msg["mimetype"], decrypt_media(msg), msg["caption"])])
         else:
             messages.append("")
@@ -160,7 +161,7 @@ def hello_world():
         threading.Thread(target=check_login).start()
         return response
     else:
-        return "<p>Ur logged in bro..</p>"
+        return "<p>Ur logged in bro..go to /chats</p>"
 
 @app.route("/logged-in")
 def logged_in():
@@ -273,10 +274,11 @@ def download_media():
         response = Response(file_bytes, mimetype="video/mp4")
         response.headers["Content-Disposition"] = "attachment; filename=video.mp4"
 
-    elif media_download["type"] == "application/pdf":
+    elif "application" in media_download["type"]:
         file_bytes = base64.b64decode(media_download["media"])
-        response = Response(file_bytes, mimetype="application/pdf")
-        response.headers["Content-Disposition"] = "attachment; filename=doc.pdf"
+        response = Response(file_bytes, mimetype=media_download["type"])
+        extension = mimetypes.guess_extension(media_download["type"])
+        response.headers["Content-Disposition"] = f"attachment; filename=file{extension}"
 
     
     if request.method == 'GET':
