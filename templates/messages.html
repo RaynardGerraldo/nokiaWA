@@ -25,7 +25,6 @@
         <b>{{ who }}&nbsp;&nbsp;&nbsp;{{ t }}</b>
         {% if msg is iterable and not msg is string %}
             {% if msg is mapping %}
-                <p>{{ msg["type"] }}</p>
                 <form action="/downmedia" method="POST">
                     <input type="hidden" name="type" value="{{ msg["type"] }}">
                     <input type="hidden" name="mimetype" value="{{ msg["mimetype"] }}">
@@ -33,7 +32,9 @@
                     <button type="submit" style="border: none; background: none; padding: 0; cursor: pointer;">
                         <input type="hidden" name="media" value="{{ msg }}">
                         {% if msg["type"] == "video" %}
-                            <img src="{{url_for("static", filename="vidicon.png")}}" width="120" height="120">
+                            <img src="{{url_for("static", filename="vidicon.png")}}" width="80" height="80">
+                        {% elif msg["type"] == "audio" %}
+                            <img src="{{url_for("static", filename="audio.png")}}" width="80" height="80">
                         {% endif %}
                         <p>{{ msg["filename"] }}</p>
                     </button>
@@ -41,7 +42,6 @@
                 <p>{{ msg["capt"] }}</p>
             {% else %}
                 {% for type,body,capt in msg %}
-                    <p>{{ type }}</p>
                     <form action="/downmedia" method="POST">
                         <input type="hidden" name="type" value="{{ type }}">
                         <button type="submit" style="border: none; background: none; padding: 0; cursor: pointer;">
