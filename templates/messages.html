@@ -28,9 +28,14 @@
                 <p>{{ msg["type"] }}</p>
                 <form action="/downmedia" method="POST">
                     <input type="hidden" name="type" value="{{ msg["type"] }}">
+                    <input type="hidden" name="mimetype" value="{{ msg["mimetype"] }}">
+                    <input type="hidden" name="filename" value="{{ msg["filename"] }}">
                     <button type="submit" style="border: none; background: none; padding: 0; cursor: pointer;">
                         <input type="hidden" name="media" value="{{ msg }}">
-                        <img src="data:image/jpeg;base64,{{ msg["body"] }}" width="120" height="120">
+                        {% if msg["type"] == "video" %}
+                            <img src="{{url_for("static", filename="vidicon.png")}}" width="120" height="120">
+                        {% endif %}
+                        <p>{{ msg["filename"] }}</p>
                     </button>
                 </form>
                 <p>{{ msg["capt"] }}</p>
@@ -41,16 +46,10 @@
                         <input type="hidden" name="type" value="{{ type }}">
                         <button type="submit" style="border: none; background: none; padding: 0; cursor: pointer;">
                             <input type="hidden" name="media" value="{{ body }}">
-                            {% if "application" not in type %}
-                                <img src="data:image/jpeg;base64,{{ body }}" width="120" height="120">
-                            {% else %}
-                                <p>{{ capt }}</p>
-                            {% endif %}
+                            <img src="data:image/jpeg;base64,{{ body }}" width="120" height="120">
                         </button>
                     </form>
-                    {% if "application" not in type %}
-                        <p>{{ capt }}</p>
-                    {% endif %}
+                    <p>{{ capt }}</p>
                 {% endfor %}
             {% endif %}
         {% else %}

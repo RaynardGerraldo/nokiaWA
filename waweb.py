@@ -112,11 +112,12 @@ def gather_msg(msgs):
         if msg["type"] == "chat":
             messages.append(msg["body"])
         elif msg["type"] == "image":
+            # not using mimetype since image is always jpeg
             messages.append([(msg["type"], decrypt_media(msg), msg["caption"])])
         elif msg["type"] == "video":
             messages.append(msg)
-        elif msg["mimetype"] and "application" in msg["mimetype"]:
-            messages.append([(msg["mimetype"], decrypt_media(msg), msg["caption"])])
+        elif msg["type"] == "document":
+            messages.append(msg)
         else:
             messages.append("")
     return messages
@@ -178,6 +179,7 @@ def chats():
         timestamp: m.t,
         from: m.from,
         type: m.type,
+        filename: m.filename || "",
         mimetype: m.mimetype,
         caption: m.caption || "",
 	    directPath: m.directPath,
@@ -221,6 +223,7 @@ def chat_session():
         timestamp: m.t,
         from: m.from,
         type: m.type,
+        filename: m.filename || "",
         mimetype: m.mimetype,
         caption: m.caption || "",
 	    directPath: m.directPath,
@@ -259,27 +262,35 @@ def download_media():
     if not media_download and request.method == 'POST':
         media = request.form.get("media")
         media_type = request.form.get("type")
+        filename = request.form.get("filename")
+        mimetype = request.form.get("mimetype")
 
         media_download["type"] = media_type
         media_download["media"] = media
+        media_download["filename"] = filename
+        media_download["mimetype"] = mimetype
 
     if media_download["type"] == "image":
         file_bytes = base64.b64decode(media_download["media"])
         response = Response(file_bytes, mimetype="image/jpeg")
         response.headers["Content-Disposition"] = "attachment; filename=image.jpeg"
 
-    elif media_download["type"] == "video":
-        media = ast.literal_eval(media_download["media"])
-        file_bytes = base64.b64decode(decrypt_media(media))
+    elif "video" in media_download["type"]:
+        video = ast.literal_eval(media_download["media"])
+        print(video)
+        file_bytes = base64.b64decode(decrypt_media(video))
+        print(file_bytes)
         response = Response(file_bytes, mimetype="video/mp4")
+        print(response)
         response.headers["Content-Disposition"] = "attachment; filename=video.mp4"
 
-    elif "application" in media_download["type"]:
-        file_bytes = base64.b64decode(media_download["media"])
-        response = Response(file_bytes, mimetype=media_download["type"])
-        extension = mimetypes.guess_extension(media_download["type"])
-        response.headers["Content-Disposition"] = f"attachment; filename=file{extension}"
-
+    elif "document" in media_download["type"]:
+        document = ast.literal_eval(media_download["media"])
+        file_bytes = base64.b64decode(decrypt_media(document))
+        response = Response(file_bytes, mimetype=media_download["mimetype"])
+        #extension = mimetypes.guess_extension(media_download["type"])
+        # no need for extension, file name takes care of that
+        response.headers["Content-Disposition"] = f"""attachment; filename={media_download["filename"]}"""
     
     if request.method == 'GET':
         media_download.clear()
