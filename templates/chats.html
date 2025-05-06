@@ -18,7 +18,6 @@
             </form>
             {% if msg is iterable and not msg is string %}
                 {% if msg is mapping %}
-                    <p>{{ msg["type"] }}</p>
                     {% if msg["type"] == "video" %}
                          <img src="{{url_for("static", filename="vidicon.png")}}" width="120" height="120">
                     {% endif %}
@@ -26,7 +25,6 @@
                     <p>{{ msg["capt"] }}</p>
                 {% else %}
                   {% for type,body,capt in msg %}
-                      <p>{{ type }}</p>
                       <img src="data:image/jpeg;base64,{{ body }}" width="120" height="120">
                       <p>{{ capt }}</p>
                   {% endfor %}

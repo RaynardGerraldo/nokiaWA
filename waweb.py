@@ -114,12 +114,8 @@ def gather_msg(msgs):
         elif msg["type"] == "image":
             # not using mimetype since image is always jpeg
             messages.append([(msg["type"], decrypt_media(msg), msg["caption"])])
-        elif msg["type"] == "video":
-            messages.append(msg)
-        elif msg["type"] == "document":
-            messages.append(msg)
         else:
-            messages.append("")
+            messages.append(msg)
     return messages
 
 def decrypt_media(msg):
@@ -277,12 +273,15 @@ def download_media():
 
     elif "video" in media_download["type"]:
         video = ast.literal_eval(media_download["media"])
-        print(video)
         file_bytes = base64.b64decode(decrypt_media(video))
-        print(file_bytes)
         response = Response(file_bytes, mimetype="video/mp4")
-        print(response)
         response.headers["Content-Disposition"] = "attachment; filename=video.mp4"
+    
+    elif "audio" in media_download["type"]:
+        audio = ast.literal_eval(media_download["media"])
+        file_bytes = base64.b64decode(decrypt_media(audio))
+        response = Response(file_bytes, mimetype="audio/mpeg")
+        response.headers["Content-Disposition"] = "attachment; filename=audio.mp3"
 
     elif "document" in media_download["type"]:
         document = ast.literal_eval(media_download["media"])
