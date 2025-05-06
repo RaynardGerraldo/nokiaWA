@@ -281,7 +281,7 @@ def download_media():
         audio = ast.literal_eval(media_download["media"])
         file_bytes = base64.b64decode(decrypt_media(audio))
         response = Response(file_bytes, mimetype="audio/mpeg")
-        response.headers["Content-Disposition"] = "attachment; filename=audio.mpga"
+        response.headers["Content-Disposition"] = "attachment; filename=audio.mp3"
 
     elif "document" in media_download["type"]:
         document = ast.literal_eval(media_download["media"])
