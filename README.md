@@ -53,8 +53,8 @@ Download release 131.0.6778.264 for your architecture, unzip ,set above mentione
 
 ## Roadmap
 
-- Media support
-- And more...
+- Send images,videos,audio,files
+- And more..
 
 Feel free to contribute :)
 
