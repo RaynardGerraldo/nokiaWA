@@ -41,14 +41,20 @@
                 </form>
                 <p>{{ msg["capt"] }}</p>
             {% else %}
-                {% for type,body,capt in msg %}
+                {% for type,mimetype,body,capt in msg %}
                     <form action="/downmedia" method="POST">
                         <input type="hidden" name="type" value="{{ type }}">
+                        <input type="hidden" name="mimetype" value="{{ mimetype }}">
                         <button type="submit" style="border: none; background: none; padding: 0; cursor: pointer;">
                             <input type="hidden" name="media" value="{{ body }}">
-                            <img src="data:image/jpeg;base64,{{ body }}" width="120" height="120">
+                            {% if "jpeg" in mimetype %}
+                                <img src="data:{{ mimetype }};base64,{{ body }}" width="120" height="120">
+                            {% endif %}
                         </button>
                     </form>
+                    {% if "jpeg" not in mimetype %}
+                        <img src="data:{{ mimetype }};base64,{{ body }}" width="120" height="120">
+                    {% endif %}
                     <p>{{ capt }}</p>
                 {% endfor %}
             {% endif %}

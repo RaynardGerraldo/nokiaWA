@@ -111,9 +111,9 @@ def gather_msg(msgs):
     for msg in msgs:
         if msg["type"] == "chat":
             messages.append(msg["body"])
-        elif msg["type"] == "image":
+        elif msg["type"] == "image" or msg["type"] == "sticker":
             # not using mimetype since image is always jpeg
-            messages.append([(msg["type"], decrypt_media(msg), msg["caption"])])
+            messages.append([(msg["type"], msg["mimetype"], decrypt_media(msg), msg["caption"])])
         elif msg["type"] == "revoked":
             messages.append("Message deleted")
         else:
@@ -272,21 +272,21 @@ def download_media():
     if media_download["type"] == "image":
         file_bytes = base64.b64decode(media_download["media"])
         response = Response(file_bytes, mimetype="image/jpeg")
-        response.headers["Content-Disposition"] = "attachment; filename=image.jpeg"
+        response.headers["Content-Disposition"] = "attachment; filename=image.jpg"
 
-    elif "video" in media_download["type"]:
+    elif media_download["type"] == "video":
         video = ast.literal_eval(media_download["media"])
         file_bytes = base64.b64decode(decrypt_media(video))
         response = Response(file_bytes, mimetype="video/mp4")
         response.headers["Content-Disposition"] = "attachment; filename=video.mp4"
     
-    elif "audio" in media_download["type"]:
+    elif media_download["type"] == "audio":
         audio = ast.literal_eval(media_download["media"])
         file_bytes = base64.b64decode(decrypt_media(audio))
         response = Response(file_bytes, mimetype="audio/mpeg")
         response.headers["Content-Disposition"] = "attachment; filename=audio.mp3"
 
-    elif "document" in media_download["type"]:
+    elif media_download["type"] == "document":
         document = ast.literal_eval(media_download["media"])
         file_bytes = base64.b64decode(decrypt_media(document))
         response = Response(file_bytes, mimetype=media_download["mimetype"])
