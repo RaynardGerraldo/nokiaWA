@@ -25,7 +25,7 @@
                     <p>{{ msg["capt"] }}</p>
                 {% else %}
                   {% for type,mimetype,body,capt in msg %}
-                      <img src="data:image/jpeg;base64,{{ body }}" width="120" height="120">
+                      <img src="data:{{ mimetype }};base64,{{ body }}" width="120" height="120">
                       <p>{{ capt }}</p>
                   {% endfor %}
                 {% endif %}
