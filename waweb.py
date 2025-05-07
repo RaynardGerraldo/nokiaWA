@@ -114,6 +114,8 @@ def gather_msg(msgs):
         elif msg["type"] == "image":
             # not using mimetype since image is always jpeg
             messages.append([(msg["type"], decrypt_media(msg), msg["caption"])])
+        elif msg["type"] == "revoked":
+            messages.append("Message deleted")
         else:
             messages.append(msg)
     return messages
@@ -217,7 +219,7 @@ def chat_session():
     msgdata = driver.execute_script(f"""return document.msgdata = window.Store.Chat.get('{num}').msgs._models.map(m => ({{
         body: m.body,
         timestamp: m.t,
-        from: m.from,
+        from: (m.from.server == "g.us" ? null : window.Store.Contact.get(m.from._serialized).name) || window.Store.Contact.get(m.author._serialized).name || m.senderObj.verifiedName || m.senderObj.pushname,
         type: m.type,
         filename: m.filename || "",
         mimetype: m.mimetype,
@@ -230,7 +232,8 @@ def chat_session():
     }}));""")
 
     messages = gather_msg(msgdata)
-    who = driver.execute_script("return document.msgdata.map(msg => msg.from._serialized).map(num => window.Store.Contact.get(num).name);")
+    # using name in contact (if available) or whatsapp name (verified for business acc, push for non business acc)
+    who = driver.execute_script("return document.msgdata.map(m => m.from);")
     time = [datetime.fromtimestamp(timestamp["timestamp"]).time().strftime("%H:%M") for timestamp in msgdata]
 
     messages.reverse()
