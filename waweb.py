@@ -219,7 +219,7 @@ def chat_session():
     msgdata = driver.execute_script(f"""return document.msgdata = window.Store.Chat.get('{num}').msgs._models.map(m => ({{
         body: m.body,
         timestamp: m.t,
-        from: (m.from.server == "g.us" ? null : window.Store.Contact.get(m.from._serialized).name) || m.senderObj.verifiedName || m.senderObj.pushname,
+        from: (m.from.server == "g.us" ? null : window.Store.Contact.get(m.from._serialized).name) || window.Store.Contact.get(m.author._serialized).name || m.senderObj.verifiedName || m.senderObj.pushname,
         type: m.type,
         filename: m.filename || "",
         mimetype: m.mimetype,
