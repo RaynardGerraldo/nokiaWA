@@ -117,6 +117,7 @@ def gather_msg(msgs):
         elif msg["type"] == "revoked":
             messages.append("Message deleted")
         else:
+            msg["caption"] = emoji.demojize(msg["caption"])
             messages.append(msg)
     return messages
 

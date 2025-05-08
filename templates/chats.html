@@ -22,7 +22,7 @@
                          <img src="{{url_for("static", filename="vidicon.png")}}" width="120" height="120">
                     {% endif %}
                     <p>{{ msg["filename"] }}</p>
-                    <p>{{ msg["capt"] }}</p>
+                    <p>{{ msg["caption"] }}</p>
                 {% else %}
                   {% for type,mimetype,body,capt in msg %}
                       <img src="data:{{ mimetype }};base64,{{ body }}" width="120" height="120">
