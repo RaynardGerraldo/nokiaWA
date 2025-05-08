@@ -32,6 +32,7 @@ flask --app waweb run
 - Send plain text messages
 - View and download images
 - View stickers
+- View emojis (text based)
 - Download videos
 - Download audios
 - Download files (zip,pdf,docx,xlsx,etc)
