@@ -11,7 +11,7 @@ import base64
 import threading
 import os
 import ast
-import mimetypes
+import emoji
 
 user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 chrome_options = webdriver.ChromeOptions()
@@ -110,10 +110,10 @@ def gather_msg(msgs):
     messages = []
     for msg in msgs:
         if msg["type"] == "chat":
-            messages.append(msg["body"])
+            messages.append(emoji.demojize(msg["body"]))
         elif msg["type"] == "image" or msg["type"] == "sticker":
             # not using mimetype since image is always jpeg
-            messages.append([(msg["type"], msg["mimetype"], decrypt_media(msg), msg["caption"])])
+            messages.append([(msg["type"], msg["mimetype"], decrypt_media(msg), emoji.demojize(msg["caption"]))])
         elif msg["type"] == "revoked":
             messages.append("Message deleted")
         else:
