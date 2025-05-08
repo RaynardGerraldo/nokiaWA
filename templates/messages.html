@@ -39,7 +39,7 @@
                         <p>{{ msg["filename"] }}</p>
                     </button>
                 </form>
-                <p>{{ msg["capt"] }}</p>
+                <p>{{ msg["caption"] }}</p>
             {% else %}
                 {% for type,mimetype,body,capt in msg %}
                     <form action="/downmedia" method="POST">
