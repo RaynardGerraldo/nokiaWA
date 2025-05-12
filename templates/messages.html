@@ -16,9 +16,11 @@
     </style>
 </head>
 <body>
-    <form action="/send" method="POST">
+    <!-- add input here for files, take file upload -->
+    <form action="/send" method="POST" enctype="multipart/form-data">
         <input type="hidden" name="num" value="{{ num }}">
         <input type="text" name="sendbox" class="rectangular-input" placeholder="Type here...">
+        <input type="file" id="fileUpload" name="files">
         <button type="submit">Send</button>
     </form>
     {% for who,msg,t in who_msg_t %}
