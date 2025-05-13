@@ -115,9 +115,9 @@ def media_send(ids, mediainfo, caption, as_attach):
     });""")
 
     driver.execute_script("document.file = document.mediaInfoToFile(arguments[0])", mediainfo)
- 
+
     # init file
-    driver.execute_script(f"""document.mData = await window.Store.OpaqueData.createFromData(document.file, document.file.type);"
+    driver.execute_script(f"""document.mData = await window.Store.OpaqueData.createFromData(document.file, document.file.type);
                               document.mediaPrep = window.Store.MediaPrep.prepRawMedia(document.mData, {{ asDocument: {as_attach} }});
                               document.mediaData = await document.mediaPrep.waitForPrep();
                               document.mediaObject = window.Store.MediaObject.getOrCreateMediaObject(document.mediaData.filehash);
@@ -134,20 +134,20 @@ def media_send(ids, mediainfo, caption, as_attach):
                               document.mediaData.mediaBlob.autorelease();
 
 
-                              document.uploadedMedia = await window.Store.MediaUpload.uploadMedia({{
+                              document.uploadedMedia = await window.Store.MediaUpload.uploadMedia({
                                  mimetype: document.mediaData.mimetype,
                                  mediaObject: document.mediaObject,
                                  mediaType: document.mediaType
-                              }});
+                              });
 
                               document.mediaEntry = document.uploadedMedia.mediaEntry;
-                              if (!document.mediaEntry) {{
+                              if (!document.mediaEntry) {
                                  throw new Error('upload failed: media entry was not created');
-                              }}
+                              }
     """)
     
     # init send
-    driver.execute_script("""document.mediaData.set({{
+    driver.execute_script("""document.mediaData.set({
                                 clientUrl: document.mediaEntry.mmsUrl,
                                 deprecatedMms3Url: document.mediaEntry.deprecatedMms3Url,
                                 directPath: document.mediaEntry.directPath,
@@ -159,7 +159,7 @@ def media_send(ids, mediainfo, caption, as_attach):
                                 size: document.mediaObject.size,
                                 streamingSidecar: document.mediaEntry.sidecar,
                                 firstFrameSidecar: document.mediaEntry.firstFrameSidecar
-                             }});
+                             });
 
     """)
 
@@ -173,7 +173,7 @@ def media_send(ids, mediainfo, caption, as_attach):
         id: document.newMsgId,
         ack: 0,
         body: document.mediaData.preview,
-        caption: {caption},
+        caption: "{caption}",
         from: document.meUser,
         to: document.chat.id,
         local: true,
@@ -365,35 +365,51 @@ def chat_session():
         #return 'No selected file'
     #filename = secure_filename(fileupload.filename)
     #mimetype = fileupload.content_type
-    #file_base64 = base64.b64encode(fileupload.read()).decode('utf-8')
     #mediainfo["data"] = file_base64
     #mediainfo["mimetype"] = mimetype
     #mediainfo["filename"] = filename
     
 @app.route("/send", methods=['POST'])
 def send():
+    num = request.form.get("num")
+    msg = request.form.get("sendbox")
     if mediainfo and request.method == 'POST':
         mediainfo.clear()
 
-    fileupload = request.files['files']
+    fileupload = request.files['file']
     if fileupload.filename == '':
         return 'No selected file'
-    else:
-        filename = secure_filename(fileupload.filename)
-        mimetype = fileupload.content_type
-        file_base64 = base64.b64encode(fileupload.read()).decode('utf-8')
-        mediainfo["data"] = file_base64
-        mediainfo["mimetype"] = mimetype
-        mediainfo["filename"] = filename
+    
+    file_bytes = fileupload.read()
+    print(f"Read {len(file_bytes)} bytes from uploaded file")
+
+    if not file_bytes:
+        print("stream: ", fileupload.stream)
+        fileupload.stream.seek(0)
+        file_bytes = fileupload.stream.read()
+        print(f"Bytes via stream: {len(file_bytes)}")
+        print("FILES:", request.files.to_dict())
+        print("req header: ", dict(request.headers))
+        return 'File upload failed or file is empty'
+
+    filename = secure_filename(fileupload.filename)
+    mimetype = fileupload.content_type
+    file_base64 = base64.b64encode(file_bytes).decode('utf-8')
+    mediainfo["data"] = file_base64
+    mediainfo["mimetype"] = mimetype
+    mediainfo["filename"] = filename
+    print("mediainfo: ", mediainfo)
+    print("fileupload: ", fileupload)
+    print(f"Filename: {fileupload.filename}")
+    print(f"Content-Type: {fileupload.content_type}")
+    print(f"Content-Length header: {request.content_length}")
 
     # if there is file attached
     if mediainfo:
-        media_send(request.form.get("num"), mediainfo, request.form.get("sendbox"), "false") # for attachments request.form.get("asAttach"))
+        media_send(num, mediainfo, msg, "false") # for attachments request.form.get("asAttach"))
     # plain text
     else:
-        msg_to_send = request.form.get("sendbox")
-        num = request.form.get("num")
-        send_message(num,msg_to_send)
+        send_message(num,msg)
     return redirect(url_for("chat_session", num=num))
 
 @app.route("/downmedia", methods=['POST', 'GET'])
