@@ -30,6 +30,7 @@ flask --app waweb run
 ### Features
 - Read messages
 - Send plain text messages
+- Send images
 - View and download images
 - View stickers
 - View emojis (text based)
@@ -56,7 +57,7 @@ Download release 131.0.6778.264 for your architecture, unzip ,set above mentione
 
 ## Roadmap
 
-- Send images,videos,audio,files
+- Send videos,audio,files
 - And more..
 
 Feel free to contribute :)
