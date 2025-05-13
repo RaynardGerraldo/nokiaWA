@@ -116,8 +116,8 @@ def media_send(ids, mediainfo, caption, as_attach):
 
     driver.execute_script("document.file = document.mediaInfoToFile(arguments[0])", mediainfo)
  
-    # prepare mediaEntry
-    driver.execute_script(f"""document.mData = await window.Store.OpaqueData.createFromData(document.file, document.file.type);
+    # init file
+    driver.execute_script(f"""document.mData = await window.Store.OpaqueData.createFromData(document.file, document.file.type);"
                               document.mediaPrep = window.Store.MediaPrep.prepRawMedia(document.mData, {{ asDocument: {as_attach} }});
                               document.mediaData = await document.mediaPrep.waitForPrep();
                               document.mediaObject = window.Store.MediaObject.getOrCreateMediaObject(document.mediaData.filehash);
@@ -125,19 +125,29 @@ def media_send(ids, mediainfo, caption, as_attach):
                                   type: document.mediaData.type,
                                   isGif: document.mediaData.isGif
                               }});
+    """)
+
+    # init upload
+    driver.execute_script("""document.mediaData.mediaBlob = await window.Store.OpaqueData.createFromData(document.mediaData.mediaBlob, document.mediaData.mediaBlob.type); 
+                              document.mediaData.renderableUrl = document.mediaData.mediaBlob.url();
+                              document.mediaObject.consolidate(document.mediaData.toJSON());
+                              document.mediaData.mediaBlob.autorelease();
+
 
                               document.uploadedMedia = await window.Store.MediaUpload.uploadMedia({{
                                  mimetype: document.mediaData.mimetype,
-                                 mediaObject,
-                                 mediaType
+                                 mediaObject: document.mediaObject,
+                                 mediaType: document.mediaType
                               }});
 
                               document.mediaEntry = document.uploadedMedia.mediaEntry;
                               if (!document.mediaEntry) {{
                                  throw new Error('upload failed: media entry was not created');
                               }}
-
-                              document.mediaData.set({{
+    """)
+    
+    # init send
+    driver.execute_script("""document.mediaData.set({{
                                 clientUrl: document.mediaEntry.mmsUrl,
                                 deprecatedMms3Url: document.mediaEntry.deprecatedMms3Url,
                                 directPath: document.mediaEntry.directPath,
@@ -151,7 +161,8 @@ def media_send(ids, mediainfo, caption, as_attach):
                                 firstFrameSidecar: document.mediaEntry.firstFrameSidecar
                              }});
 
-                           """)
+    """)
+
     if as_attach:
         f_type = as_attach
     else:
@@ -162,7 +173,7 @@ def media_send(ids, mediainfo, caption, as_attach):
         id: document.newMsgId,
         ack: 0,
         body: document.mediaData.preview,
-        caption: {caption}
+        caption: {caption},
         from: document.meUser,
         to: document.chat.id,
         local: true,
