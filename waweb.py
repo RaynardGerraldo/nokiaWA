@@ -162,8 +162,9 @@ def media_send(ids, mediainfo, caption, as_attach):
                              });
 
     """)
-
-    if as_attach:
+    
+    # true string will be available on future feature
+    if as_attach == "true":
         f_type = "document"
     else:
         f_type = driver.execute_script("return document.mediaData.type")
@@ -180,7 +181,7 @@ def media_send(ids, mediainfo, caption, as_attach):
         self: 'out',
         t: parseInt(new Date().getTime() / 1000),
         isNewMsg: true,
-        type: {f_type},
+        type: "{f_type}",
         ...document.mediaData
     }};""")
 
@@ -369,15 +370,16 @@ def send():
     if mediainfo and request.method == 'POST':
         mediainfo.clear()
 
-    if fileupload.filename == '' or not file_bytes:
-        error = True
-        return redirect(url_for("chat_session", num=num, error=error))
-
-    mimetype = fileupload.content_type
-    file_base64 = base64.b64encode(file_bytes).decode('utf-8')
-    mediainfo["data"] = file_base64
-    mediainfo["mimetype"] = mimetype
-    mediainfo["filename"] = filename
+    if fileupload:
+        if fileupload.filename == '' or not file_bytes:
+            error = True
+            return redirect(url_for("chat_session", num=num, error=error))
+        else:
+            mimetype = fileupload.content_type
+            file_base64 = base64.b64encode(file_bytes).decode('utf-8')
+            mediainfo["data"] = file_base64
+            mediainfo["mimetype"] = mimetype
+            mediainfo["filename"] = filename
 
     # if there is file attached
     if mediainfo:
