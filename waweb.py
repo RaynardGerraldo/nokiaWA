@@ -1,4 +1,5 @@
 from flask import Flask, render_template,redirect,url_for,request, Response
+from werkzeug.utils import secure_filename
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -37,6 +38,7 @@ driver.get("https://web.whatsapp.com/")
 print("Chromedriver Version: ", driver.capabilities["chrome"]["chromedriverVersion"])
 media_download = {}
 session_reload = {}
+mediainfo = {}
 def login():
     if session["logged_in"] is True:
        return False 
@@ -69,15 +71,121 @@ def check_login():
             session_reload[num] = 0
         session["logged_in"] = True
 
-def load_send():
-    driver.execute_script("window.Store.User = window.require('WAWebUserPrefsMeUser');")
-    driver.execute_script("window.Store.MsgKey = window.require('WAWebMsgKey');")
-    driver.execute_script("window.Store.SendMessage = window.require('WAWebSendMsgChatAction');")
-
 def load_msg(num):
     driver.execute_script(f"document.chat = window.Store.Chat.get('{num}');")
     driver.execute_script("window.Store.ConversationMsgs = window.require('WAWebChatLoadMessages');")
     driver.execute_script("await window.Store.ConversationMsgs.loadEarlierMsgs(document.chat);")
+
+def load_send():
+    driver.execute_script("window.Store.User = window.require('WAWebUserPrefsMeUser');")
+    driver.execute_script("window.Store.MsgKey = window.require('WAWebMsgKey');")
+    driver.execute_script("window.Store.SendMessage = window.require('WAWebSendMsgChatAction');")
+    driver.execute_script("window.Store.MediaObject = window.require('WAWebMediaStorage');")
+    driver.execute_script("window.Store.OpaqueData = window.require('WAWebMediaOpaqueData');")
+    driver.execute_script("window.Store.MediaTypes = window.require('WAWebMmsMediaTypes');")
+    driver.execute_script("window.Store.MediaPrep = window.require('WAWebPrepRawMedia');")
+    driver.execute_script("window.Store.MediaUpload = window.require('WAWebMediaMmsV4Upload');")
+
+    driver.execute_script("""document.mediaInfoToFile = ({ data, mimetype, filename }) => {
+        const binaryData = window.atob(data);
+
+        const buffer = new ArrayBuffer(binaryData.length);
+        const view = new Uint8Array(buffer);
+        for (let i = 0; i < binaryData.length; i++) {
+            view[i] = binaryData.charCodeAt(i);
+        }
+
+        const blob = new Blob([buffer], { type: mimetype });
+        return new File([blob], filename, {
+            type: mimetype,
+            lastModified: Date.now()
+        });
+    };""")
+
+def media_send(ids, mediainfo, caption, as_attach):
+    driver.execute_script(f"document.chat = window.Store.Chat.get('{ids}');")
+    driver.execute_script("document.meUser = window.Store.User.getMaybeMeUser();")
+    driver.execute_script("document.newId = await window.Store.MsgKey.newId();")
+    driver.execute_script("""document.newMsgId = new window.Store.MsgKey({
+        from: document.meUser,
+        to: document.chat.id,
+        id: document.newId,
+        participant: document.chat.id.isGroup() ? document.meUser : undefined,
+        selfDir: 'out',
+    });""")
+
+    driver.execute_script("document.file = document.mediaInfoToFile(arguments[0])", mediainfo)
+    
+    # init file
+    driver.execute_script(f"""document.mData = await window.Store.OpaqueData.createFromData(document.file, document.file.type);
+                              document.mediaPrep = window.Store.MediaPrep.prepRawMedia(document.mData, {{ asDocument: {as_attach} }});
+                              document.mediaData = await document.mediaPrep.waitForPrep();
+                              document.mediaObject = window.Store.MediaObject.getOrCreateMediaObject(document.mediaData.filehash);
+                              document.mediaType = window.Store.MediaTypes.msgToMediaType({{
+                                  type: document.mediaData.type,
+                                  isGif: document.mediaData.isGif
+                              }});
+    """)
+
+    # init upload
+    driver.execute_script("""document.mediaData.mediaBlob = await window.Store.OpaqueData.createFromData(document.mediaData.mediaBlob, document.mediaData.mediaBlob.type); 
+                              document.mediaData.renderableUrl = document.mediaData.mediaBlob.url();
+                              document.mediaObject.consolidate(document.mediaData.toJSON());
+                              document.mediaData.mediaBlob.autorelease();
+
+
+                              document.uploadedMedia = await window.Store.MediaUpload.uploadMedia({
+                                 mimetype: document.mediaData.mimetype,
+                                 mediaObject: document.mediaObject,
+                                 mediaType: document.mediaType
+                              });
+
+                              document.mediaEntry = document.uploadedMedia.mediaEntry;
+                              if (!document.mediaEntry) {
+                                 throw new Error('upload failed: media entry was not created');
+                              }
+    """)
+    
+    # init send
+    driver.execute_script("""document.mediaData.set({
+                                clientUrl: document.mediaEntry.mmsUrl,
+                                deprecatedMms3Url: document.mediaEntry.deprecatedMms3Url,
+                                directPath: document.mediaEntry.directPath,
+                                mediaKey: document.mediaEntry.mediaKey,
+                                mediaKeyTimestamp: document.mediaEntry.mediaKeyTimestamp,
+                                filehash: document.mediaObject.filehash,
+                                encFilehash: document.mediaEntry.encFilehash,
+                                uploadhash: document.mediaEntry.uploadHash,
+                                size: document.mediaObject.size,
+                                streamingSidecar: document.mediaEntry.sidecar,
+                                firstFrameSidecar: document.mediaEntry.firstFrameSidecar
+                             });
+
+    """)
+    
+    # true string will be available on future feature
+    if as_attach == "true":
+        f_type = "document"
+    else:
+        f_type = driver.execute_script("return document.mediaData.type")
+
+    # prepare message obj
+    driver.execute_script(f"""document.message = {{
+        id: document.newMsgId,
+        ack: 0,
+        body: document.mediaData.preview,
+        caption: "{caption}",
+        from: document.meUser,
+        to: document.chat.id,
+        local: true,
+        self: 'out',
+        t: parseInt(new Date().getTime() / 1000),
+        isNewMsg: true,
+        type: "{f_type}",
+        ...document.mediaData
+    }};""")
+
+    driver.execute_script("window.Store.SendMessage.addAndSendMsgToChat(document.chat, document.message)")
 
 def send_message(ids,response):
     driver.execute_script(f"document.chat = window.Store.Chat.get('{ids}');")
@@ -112,7 +220,7 @@ def gather_msg(msgs):
         if msg["type"] == "chat":
             messages.append(emoji.demojize(msg["body"]))
         elif msg["type"] == "image" or msg["type"] == "sticker":
-            # not using mimetype since image is always jpeg
+            # using mimetype for stickers
             messages.append([(msg["type"], msg["mimetype"], decrypt_media(msg), emoji.demojize(msg["caption"]))])
         elif msg["type"] == "revoked":
             messages.append("Message deleted")
@@ -169,6 +277,7 @@ def logged_in():
         return "<p>Ur in...</p>"
     return "<p>U aint in bro...</p>"
 
+
 @app.route("/chats")
 def chats():
     driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
@@ -210,9 +319,12 @@ def process_num():
 @app.route("/chatsession")
 def chat_session():
     num = request.args.get("num", None)
+    error = request.args.get("error", "")
     if num is None:
         return "<p>No chats available</p>"
     
+    if error:
+        error = "File upload failed, check file name for any special characters."
     if session_reload[num] == 0:
         load_msg(num)
         session_reload[num] += 1
@@ -245,13 +357,36 @@ def chat_session():
 
     print(who_msg_t)
 
-    return render_template("messages.html", who_msg_t=who_msg_t, num=num)
+    return render_template("messages.html", who_msg_t=who_msg_t, num=num, error=error)
 
 @app.route("/send", methods=['POST'])
 def send():
-    msg_to_send = request.form.get("sendbox")
     num = request.form.get("num")
-    send_message(num,msg_to_send)
+    msg = request.form.get("sendbox")
+    fileupload = request.files['file']
+    filename = secure_filename(fileupload.filename)
+    file_bytes = fileupload.read()
+
+    if mediainfo and request.method == 'POST':
+        mediainfo.clear()
+
+    if fileupload:
+        if fileupload.filename == '' or not file_bytes:
+            error = True
+            return redirect(url_for("chat_session", num=num, error=error))
+        else:
+            mimetype = fileupload.content_type
+            file_base64 = base64.b64encode(file_bytes).decode('utf-8')
+            mediainfo["data"] = file_base64
+            mediainfo["mimetype"] = mimetype
+            mediainfo["filename"] = filename
+
+    # if there is file attached
+    if mediainfo:
+        media_send(num, mediainfo, msg, "false") # for attachments request.form.get("asAttach"))
+    # plain text
+    else:
+        send_message(num,msg)
     return redirect(url_for("chat_session", num=num))
 
 @app.route("/downmedia", methods=['POST', 'GET'])
@@ -291,8 +426,6 @@ def download_media():
         document = ast.literal_eval(media_download["media"])
         file_bytes = base64.b64decode(decrypt_media(document))
         response = Response(file_bytes, mimetype=media_download["mimetype"])
-        #extension = mimetypes.guess_extension(media_download["type"])
-        # no need for extension, file name takes care of that
         response.headers["Content-Disposition"] = f"""attachment; filename={media_download["filename"]}"""
     
     if request.method == 'GET':
