@@ -115,7 +115,7 @@ def media_send(ids, mediainfo, caption, as_attach):
     });""")
 
     driver.execute_script("document.file = document.mediaInfoToFile(arguments[0])", mediainfo)
-
+    
     # init file
     driver.execute_script(f"""document.mData = await window.Store.OpaqueData.createFromData(document.file, document.file.type);
                               document.mediaPrep = window.Store.MediaPrep.prepRawMedia(document.mData, {{ asDocument: {as_attach} }});
@@ -164,7 +164,7 @@ def media_send(ids, mediainfo, caption, as_attach):
     """)
 
     if as_attach:
-        f_type = as_attach
+        f_type = "document"
     else:
         f_type = driver.execute_script("return document.mediaData.type")
 
@@ -318,9 +318,12 @@ def process_num():
 @app.route("/chatsession")
 def chat_session():
     num = request.args.get("num", None)
+    error = request.args.get("error", "")
     if num is None:
         return "<p>No chats available</p>"
     
+    if error:
+        error = "File upload failed, check file name for any special characters."
     if session_reload[num] == 0:
         load_msg(num)
         session_reload[num] += 1
@@ -353,56 +356,28 @@ def chat_session():
 
     print(who_msg_t)
 
-    return render_template("messages.html", who_msg_t=who_msg_t, num=num)
+    return render_template("messages.html", who_msg_t=who_msg_t, num=num, error=error)
 
-#@app.route("/fileupload", methods=['POST'])
-#def media_info():
-    #if mediainfo:
-        #mediainfo.clear()
-
-    #fileupload = request.files['files']
-    #if fileupload.filename == '':
-        #return 'No selected file'
-    #filename = secure_filename(fileupload.filename)
-    #mimetype = fileupload.content_type
-    #mediainfo["data"] = file_base64
-    #mediainfo["mimetype"] = mimetype
-    #mediainfo["filename"] = filename
-    
 @app.route("/send", methods=['POST'])
 def send():
     num = request.form.get("num")
     msg = request.form.get("sendbox")
+    fileupload = request.files['file']
+    filename = secure_filename(fileupload.filename)
+    file_bytes = fileupload.read()
+
     if mediainfo and request.method == 'POST':
         mediainfo.clear()
 
-    fileupload = request.files['file']
-    if fileupload.filename == '':
-        return 'No selected file'
-    
-    file_bytes = fileupload.read()
-    print(f"Read {len(file_bytes)} bytes from uploaded file")
+    if fileupload.filename == '' or not file_bytes:
+        error = True
+        return redirect(url_for("chat_session", num=num, error=error))
 
-    if not file_bytes:
-        print("stream: ", fileupload.stream)
-        fileupload.stream.seek(0)
-        file_bytes = fileupload.stream.read()
-        print(f"Bytes via stream: {len(file_bytes)}")
-        print("FILES:", request.files.to_dict())
-        print("req header: ", dict(request.headers))
-        return 'File upload failed or file is empty'
-
-    filename = secure_filename(fileupload.filename)
     mimetype = fileupload.content_type
     file_base64 = base64.b64encode(file_bytes).decode('utf-8')
     mediainfo["data"] = file_base64
     mediainfo["mimetype"] = mimetype
     mediainfo["filename"] = filename
-    print("mediainfo: ", mediainfo)
-    print("fileupload: ", fileupload)
-    print(f"Filename: {fileupload.filename}")
-    print(f"Content-Type: {fileupload.content_type}")
-    print(f"Content-Length header: {request.content_length}")
 
     # if there is file attached
     if mediainfo:
