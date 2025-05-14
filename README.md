@@ -1,6 +1,6 @@
 # nokiaWA
 
-An attempt to have Whatsapp on old Nokia phones
+Whatsapp for old Nokia Phones, dumbphones, web-based
 
 Self Host this please, for your own safety
 
