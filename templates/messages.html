@@ -25,6 +25,10 @@
         <input type="hidden" name="num" value="{{ num }}">
         <input type="text" name="sendbox" class="rectangular-input" placeholder="Type here...">
         <input type="file" id="fileUpload" name="file">
+        <label>
+            <input type="checkbox" name="asattach" value="yes">
+            As attachment
+        </label>
         <button type="submit">Send</button>
     </form>
     {% for who,msg,t in who_msg_t %}

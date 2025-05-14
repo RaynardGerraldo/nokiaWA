@@ -163,26 +163,19 @@ def media_send(ids, mediainfo, caption, as_attach):
 
     """)
     
-    # true string will be available on future feature
-    if as_attach == "true":
-        f_type = "document"
-    else:
-        f_type = driver.execute_script("return document.mediaData.type")
-
     # prepare message obj
     driver.execute_script(f"""document.message = {{
         id: document.newMsgId,
         ack: 0,
         body: document.mediaData.preview,
-        caption: "{caption}",
         from: document.meUser,
         to: document.chat.id,
         local: true,
         self: 'out',
         t: parseInt(new Date().getTime() / 1000),
         isNewMsg: true,
-        type: "{f_type}",
-        ...document.mediaData
+        ...document.mediaData,
+        caption: "{caption}"
     }};""")
 
     driver.execute_script("window.Store.SendMessage.addAndSendMsgToChat(document.chat, document.message)")
@@ -383,7 +376,12 @@ def send():
 
     # if there is file attached
     if mediainfo:
-        media_send(num, mediainfo, msg, "false") # for attachments request.form.get("asAttach"))
+        checkbox = request.form.get("asattach")
+        if checkbox == "yes":
+            as_attach = "true"
+        else:
+            as_attach = "false"
+        media_send(num, mediainfo, msg, as_attach) # for attachments request.form.get("asAttach"))
     # plain text
     else:
         send_message(num,msg)
