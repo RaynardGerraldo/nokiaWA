@@ -30,7 +30,7 @@ flask --app waweb run
 ### Features
 - Read messages
 - Send plain text messages
-- Send images
+- Send images,videos,audios,files (also as attachments)
 - View and download images
 - View stickers
 - View emojis (text based)
