@@ -14,6 +14,7 @@ Notice: If there is a "SessionNotCreatedException: DevToolsActivePort file doesn
 - Flask
 - selenium
 - emoji
+- Werkzeug (included with Flask)
 
 ## Usage
 
@@ -23,7 +24,7 @@ flask --app waweb run
 -- go to /login, scan qr code
 -- console should output "hey it works" or check "/logged-in", go to /chats after
 -- click on any contact you want
--- now you can read and send message
+-- now you can read and send messages
 
 ```
 
