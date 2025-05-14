@@ -128,7 +128,10 @@ def media_send(ids, mediainfo, caption, as_attach):
     """)
 
     # init upload
-    driver.execute_script("""document.mediaData.mediaBlob = await window.Store.OpaqueData.createFromData(document.mediaData.mediaBlob, document.mediaData.mediaBlob.type); 
+    driver.execute_script(""" 
+                              if (!(document.mediaData.mediaBlob instanceof window.Store.OpaqueData)) {
+                                  document.mediaData.mediaBlob = await window.Store.OpaqueData.createFromData(document.mediaData.mediaBlob, document.mediaData.mediaBlob.type);
+                              }
                               document.mediaData.renderableUrl = document.mediaData.mediaBlob.url();
                               document.mediaObject.consolidate(document.mediaData.toJSON());
                               document.mediaData.mediaBlob.autorelease();
