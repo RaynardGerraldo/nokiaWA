@@ -19,6 +19,8 @@ Notice: If there is a "SessionNotCreatedException: DevToolsActivePort file doesn
 ## Usage
 
 ```
+git clone https://github.com/RaynardGerraldo/nokiaWA
+cd nokiaWA/
 flask --app waweb run
 
 -- go to /login, scan qr code
