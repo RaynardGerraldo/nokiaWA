@@ -6,6 +6,7 @@ Self Host this please, for your own safety
 
 Notice: If there is a "SessionNotCreatedException: DevToolsActivePort file doesn't exist" error, or, "selenium.common.exceptions.TimeoutException: Message:" during /login, follow the [Chromedriver Instruction](#chromedriver-instruction)
 
+Check out the [Secure Branch](https://github.com/RaynardGerraldo/nokiaWA/tree/secure) for a more secure approach for public hosting
 ## Dependencies
 
 - Python
