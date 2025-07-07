@@ -15,7 +15,7 @@ set Flask secret key (line 263) with
 
 recommended:
 
-run this on the terminal `export SEC_KEY=random-key-here`
+run this on the terminal `export SEC_KEY=random-key-here`, make sure random-key-here is a random string
 
 alternative (keep this private ALWAYS):
 
