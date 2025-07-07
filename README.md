@@ -2,6 +2,10 @@
 
 Whatsapp for old Nokia Phones, dumbphones, web-based
 
+## Usage
+
+`flask --app secure run`
+
 Go to master branch README for more instructions
 
 This is a more secure implementation for public hosting usage, keeps unwanted users away
