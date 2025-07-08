@@ -308,7 +308,6 @@ def process_num():
 
     name_num = dict(zip(contacts, contact_num))
     num = request.form.get("contact")
-
     return redirect(url_for("chat_session", num=name_num.get(num)))
 
 @app.route("/chatsession")
@@ -322,13 +321,12 @@ def chat_session():
     if session_reload[num] == 0:
         load_msg(num)
         session_reload[num] += 1
-
     msgdata = driver.execute_script(f"""return document.msgdata = window.Store.Chat.get('{num}').msgs._models.map(m => ({{
                                             body: m.body,
                                             timestamp: m.t,
-                                            from: (m.from.server == "g.us" ? null : window.Store.Contact.get(m.from._serialized).name) 
-                                                    || window.Store.Contact.get(m.author._serialized).name || m.senderObj.verifiedName
-                                                    || m.senderObj.pushname,
+                                            from: (m.from.server == "g.us" ? null : window.Store.Contact.get(m.from?._serialized)?.name)
+                                                || window.Store.Contact.get(m.author?._serialized)?.name
+                                                || m.senderObj.verifiedName || m.senderObj.pushname,
                                             type: m.type,
                                             filename: m.filename || "",
                                             mimetype: m.mimetype,
