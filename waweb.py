@@ -69,10 +69,46 @@ def check_login():
             session_reload[num] = 0
         session["logged_in"] = True
 
+def load_history(num):
+    driver.execute_script("window.Store.WidFactory = window.require('WAWebWidFactory');")
+    driver.execute_script("window.Store.HistorySync = window.require('WAWebSendNonMessageDataRequest');")
+    driver.execute_script(f"document.chatWid = window.Store.WidFactory.createWid('{num}');")
+    driver.execute_script(f"document.chat = window.Store.Chat.get(document.chatWid) ?? (await window.Store.Chat.find(document.chatWid));")
+
+    history = driver.execute_script("""if (document.chat?.endOfHistoryTransferType === 0) {
+	                                      await window.Store.HistorySync.sendPeerDataOperationRequest(3, {
+		                                      chatId: document.chat.id
+	                                      });
+                                          return true
+                                       }
+                                       return false
+    """)
+
+    return history
+
 def load_msg(num):
     driver.execute_script(f"document.chat = window.Store.Chat.get('{num}');")
     driver.execute_script("window.Store.ConversationMsgs = window.require('WAWebChatLoadMessages');")
     driver.execute_script("await window.Store.ConversationMsgs.loadEarlierMsgs(document.chat);")
+
+def load_chat(num):
+    latest_msg = driver.execute_script(f"""return window.Store.Chat.get('{num}').msgs._models.slice(-1).map(m => ({{
+                                                body: m.body,
+                                                timestamp: m.t,
+                                                from: m.from,
+                                                type: m.type,
+                                                filename: m.filename || "",
+                                                mimetype: m.mimetype,
+                                                caption: m.caption || "",
+                                                directPath: m.directPath,
+                                                encFilehash: m.encFilehash,
+                                                filehash: m.filehash,
+                                                mediaKey: m.mediaKey,
+                                                mediaKeyTimestamp: m.mediaKeyTimestamp,
+                                            }}))[0];
+    """)
+    
+    return latest_msg
 
 def load_send():
     driver.execute_script("window.Store.User = window.require('WAWebUserPrefsMeUser');")
@@ -210,7 +246,9 @@ def send_message(ids, response):
 def gather_msg(msgs):
     messages = []
     for msg in msgs:
-        if msg["type"] == "chat":
+        if msg == "No message history":
+            messages.append(msg)
+        elif msg["type"] == "chat":
             messages.append(emoji.demojize(msg["body"]))
         elif msg["type"] == "image" or msg["type"] == "sticker":
             # using mimetype for stickers
@@ -274,29 +312,35 @@ def logged_in():
 
 @app.route("/chats")
 def chats():
+    latest_msg = []
     driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
+    all_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized)")
     contacts = driver.execute_script("return window.Store.Chat.map(contacts => contacts.formattedTitle);")
-    latest_msg = driver.execute_script("""return window.Store.Chat._models.flatMap(chatd =>
-                                            window.Store.Chat.get(chatd.id._serialized).msgs._models.slice(-1).map(m => ({
-                                                body: m.body,
-                                                timestamp: m.t,
-                                                from: m.from,
-                                                type: m.type,
-                                                filename: m.filename || "",
-                                                mimetype: m.mimetype,
-                                                caption: m.caption || "",
-                                                directPath: m.directPath,
-                                                encFilehash: m.encFilehash,
-                                                filehash: m.filehash,
-                                                mediaKey: m.mediaKey,
-                                                mediaKeyTimestamp: m.mediaKeyTimestamp,
-                                            })));
-    """)
+    for num in all_num:
+        load_res = load_chat(num)
+        if load_res != None:
+            latest_msg.append(load_res)
 
-    all_l_msg = gather_msg(latest_msg)
+    # load history if msgs differs from contacts
+    if len(contacts) != len(latest_msg):
+        latest_same = []
+        for i,num in enumerate(all_num):
+            load_h = load_history(num)
+            load_c = load_chat(num)
+            if load_h is True:
+                latest_same.append(load_c)
+            else:
+                # avoid false alarms
+                if load_c is None:
+                    latest_same.append("No message history")
+                else:
+                    latest_same.append(load_c)
+        all_l_msg = gather_msg(latest_same)
+    else:
+        all_l_msg = gather_msg(latest_msg)
+               
     load_send()
     contact_msg = dict(zip(contacts, all_l_msg))
-
     yourname = driver.execute_script("return window.Store.Contact.get(window.Store.User.getMeUser()._serialized).name")
 
     return render_template("chats.html", contactmsg=contact_msg, yourname=yourname)
@@ -439,6 +483,9 @@ def down():
     driver.execute_script(f"document.lengthc = await window.Store.Chat.find('{num}')")
     length_old = driver.execute_script("return document.lengthc.msgs.length")
     length_new = driver.execute_script("return document.lengthc.msgs.length")
+    if load_history(num) == "false":
+        # return session if history not found
+        return redirect(url_for("chat_session", num=num))
     while length_old == length_new:
         load_msg(num)
         length_new = driver.execute_script("return document.lengthc.msgs.length")
