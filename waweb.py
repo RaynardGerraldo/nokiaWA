@@ -85,39 +85,21 @@ def load_msg(num):
     driver.execute_script("await window.Store.ConversationMsgs.loadEarlierMsgs(document.chat);")
 
 def load_chat(num):
-    if num == 0:
-        latest_msg = driver.execute_script("""return window.Store.Chat._models.flatMap(chatd =>
-                                                window.Store.Chat.get(chatd.id._serialized).msgs._models.slice(-1).map(m => ({
-                                                    body: m.body,
-                                                    timestamp: m.t,
-                                                    from: m.from,
-                                                    type: m.type,
-                                                    filename: m.filename || "",
-                                                    mimetype: m.mimetype,
-                                                    caption: m.caption || "",
-                                                    directPath: m.directPath,
-                                                    encFilehash: m.encFilehash,
-                                                    filehash: m.filehash,
-                                                    mediaKey: m.mediaKey,
-                                                    mediaKeyTimestamp: m.mediaKeyTimestamp,
-                                                })));
-        """)
-    else:
-        latest_msg = driver.execute_script(f"""return window.Store.Chat.get('{num}').msgs._models.slice(-1).map(m => ({{
-                                                    body: m.body,
-                                                    timestamp: m.t,
-                                                    from: m.from,
-                                                    type: m.type,
-                                                    filename: m.filename || "",
-                                                    mimetype: m.mimetype,
-                                                    caption: m.caption || "",
-                                                    directPath: m.directPath,
-                                                    encFilehash: m.encFilehash,
-                                                    filehash: m.filehash,
-                                                    mediaKey: m.mediaKey,
-                                                    mediaKeyTimestamp: m.mediaKeyTimestamp,
-                                                }}))[0];
-        """)
+    latest_msg = driver.execute_script(f"""return window.Store.Chat.get('{num}').msgs._models.slice(-1).map(m => ({{
+                                               body: m.body,
+                                               timestamp: m.t,
+                                               from: m.from,
+                                               type: m.type,
+                                               filename: m.filename || "",
+                                               mimetype: m.mimetype,
+                                               caption: m.caption || "",
+                                               directPath: m.directPath,
+                                               encFilehash: m.encFilehash,
+                                               filehash: m.filehash,
+                                               mediaKey: m.mediaKey,
+                                               mediaKeyTimestamp: m.mediaKeyTimestamp,
+                                           }}))[0];
+    """)
     
     return latest_msg
 
@@ -323,27 +305,24 @@ def logged_in():
 
 @app.route("/chats")
 def chats():
+    latest_msg = []
     driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
     all_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized)")
     contacts = driver.execute_script("return window.Store.Chat.map(contacts => contacts.formattedTitle);")
-    latest_msg = load_chat(0)
 
-    # load history if msgs differs from contacts
-    if len(contacts) != len(latest_msg):
-        latest_same = []
-        for i,num in enumerate(all_num):
+    for num in all_num:
+        load_c = load_chat(num)
+        if load_c is None:
             load_history(num)
-            load_msg(num)
             load_c = load_chat(num)
-            # avoid false alarms
             if load_c is None:
-                latest_same.append("No message history")
+                latest_msg.append("No message history")
             else:
-                latest_same.append(load_c)
+                latest_msg.append(load_c)
+        else:
+            latest_msg.append(load_c)
 
-        all_l_msg = gather_msg(latest_same)
-    else:
-        all_l_msg = gather_msg(latest_msg)
+    all_l_msg = gather_msg(latest_msg)
                
     load_send()
     contact_msg = dict(zip(contacts, all_l_msg))
