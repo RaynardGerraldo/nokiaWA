@@ -22,6 +22,9 @@ chrome_options.add_argument("--remote-debugging-port=9222")  # helps fix DevTool
 chrome_options.add_argument("--start-maximized")
 chrome_options.add_argument(f"--user-agent={USER_AGENT}")
 
+# disable telemetry (not cool selenium)
+os.environ['SE_AVOID_STATS'] = 'true'
+
 chrome_path = "" # your chrome path here
 chromedriver_path = "" # your chromedriver path here
 

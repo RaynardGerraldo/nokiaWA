@@ -30,7 +30,11 @@
                   {% endfor %}
                 {% endif %}
             {% else %}
-                <p>{{ msg }}</p>
+                {% if msg == "No message history" or msg == "Message deleted" %}
+                    <i>{{ msg }}</i>
+                {% else %}
+                    <p>{{ msg }}</p>
+                {% endif %}
             {% endif %}
             <hr>
         {% endfor %}

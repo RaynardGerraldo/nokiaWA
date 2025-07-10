@@ -69,7 +69,13 @@
                 {% endfor %}
             {% endif %}
         {% else %}
-            <p>{{ msg }}</p>
+            {% if msg == "No message history" or msg == "Message deleted" %}
+                <br>
+                <i>{{ msg }}</i>
+                <br>
+            {% else %}
+                <p>{{ msg }}</p>
+            {% endif %}
         {% endif %}
     {% endfor %}
     <form action="/pgdown" method="POST">
