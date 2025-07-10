@@ -76,7 +76,7 @@ def load_history(num):
     driver.execute_script("document.chat = window.Store.Chat.get(document.chatWid) ?? (await window.Store.Chat.find(document.chatWid));")
     driver.execute_script("""await window.Store.HistorySync.sendPeerDataOperationRequest(3, {
 		                        chatId: document.chat.id
-	                         });
+                             });
     """)
 
 def load_msg(num):
@@ -85,19 +85,20 @@ def load_msg(num):
     driver.execute_script("await window.Store.ConversationMsgs.loadEarlierMsgs(document.chat);")
 
 def load_chat(num):
-    latest_msg = driver.execute_script(f"""return window.Store.Chat.get('{num}').msgs._models.slice(-1).map(m => ({{
-                                               body: m.body,
-                                               timestamp: m.t,
-                                               from: m.from,
-                                               type: m.type,
-                                               filename: m.filename || "",
-                                               mimetype: m.mimetype,
-                                               caption: m.caption || "",
-                                               directPath: m.directPath,
-                                               encFilehash: m.encFilehash,
-                                               filehash: m.filehash,
-                                               mediaKey: m.mediaKey,
-                                               mediaKeyTimestamp: m.mediaKeyTimestamp,
+    latest_msg = driver.execute_script(f"""return window.Store.Chat.get('{num}').msgs._models.slice(-1)
+                                            .map(m => ({{
+                                                body: m.body,
+                                                timestamp: m.t,
+                                                from: m.from,
+                                                type: m.type,
+                                                filename: m.filename || "",
+                                                mimetype: m.mimetype,
+                                                caption: m.caption || "",
+                                                directPath: m.directPath,
+                                                encFilehash: m.encFilehash,
+                                                filehash: m.filehash,
+                                                mediaKey: m.mediaKey,
+                                                mediaKeyTimestamp: m.mediaKeyTimestamp,
                                            }}))[0];
     """)
     
