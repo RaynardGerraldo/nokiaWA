@@ -17,10 +17,13 @@ chrome_options = webdriver.ChromeOptions()
 
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
-chrome_options.add_argument('--headless=new')
+chrome_options.add_argument("--headless=new")
 chrome_options.add_argument("--remote-debugging-port=9222")  # helps fix DevToolsActivePort error
 chrome_options.add_argument("--start-maximized")
 chrome_options.add_argument(f"--user-agent={USER_AGENT}")
+
+# disable telemetry (not cool selenium)
+os.environ['SE_AVOID_STATS'] = 'true'
 
 chrome_path = "" # your chrome path here
 chromedriver_path = "" # your chromedriver path here
@@ -59,29 +62,45 @@ def login():
 
     return True
 
+# everything needed for all current features
+def preload():
+    driver.execute_script("window.Store = Object.assign({}, window.require('WAWebCollections'));")
+    # history
+    driver.execute_script("window.Store.WidFactory = window.require('WAWebWidFactory');")
+    driver.execute_script("window.Store.HistorySync = window.require('WAWebSendNonMessageDataRequest');")
+    # load msg
+    driver.execute_script("window.Store.ConversationMsgs = window.require('WAWebChatLoadMessages');")
+    # send
+    driver.execute_script("window.Store.User = window.require('WAWebUserPrefsMeUser');")
+    driver.execute_script("window.Store.MsgKey = window.require('WAWebMsgKey');")
+    driver.execute_script("window.Store.SendMessage = window.require('WAWebSendMsgChatAction');")
+    driver.execute_script("window.Store.MediaObject = window.require('WAWebMediaStorage');")
+    driver.execute_script("window.Store.OpaqueData = window.require('WAWebMediaOpaqueData');")
+    driver.execute_script("window.Store.MediaTypes = window.require('WAWebMmsMediaTypes');")
+    driver.execute_script("window.Store.MediaPrep = window.require('WAWebPrepRawMedia');")
+    driver.execute_script("window.Store.MediaUpload = window.require('WAWebMediaMmsV4Upload');")
+    # get media
+    driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
+
 def check_login():
     if WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Chats']"))):
         print("hey it works")
-        driver.execute_script("window.Store = Object.assign({}, window.require('WAWebCollections'));")
+        preload()
         contact_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized);")
-
         for num in contact_num:
             session_reload[num] = 0
         session["logged_in"] = True
 
 def load_history(num):
-    driver.execute_script("window.Store.WidFactory = window.require('WAWebWidFactory');")
-    driver.execute_script("window.Store.HistorySync = window.require('WAWebSendNonMessageDataRequest');")
     driver.execute_script(f"document.chatWid = window.Store.WidFactory.createWid('{num}');")
     driver.execute_script("document.chat = window.Store.Chat.get(document.chatWid) ?? (await window.Store.Chat.find(document.chatWid));")
     driver.execute_script("""await window.Store.HistorySync.sendPeerDataOperationRequest(3, {
-		                        chatId: document.chat.id
+                                chatId: document.chat.id
                              });
     """)
 
 def load_msg(num):
     driver.execute_script(f"document.chat = window.Store.Chat.get('{num}');")
-    driver.execute_script("window.Store.ConversationMsgs = window.require('WAWebChatLoadMessages');")
     driver.execute_script("await window.Store.ConversationMsgs.loadEarlierMsgs(document.chat);")
 
 def load_chat(num):
@@ -105,15 +124,6 @@ def load_chat(num):
     return latest_msg
 
 def load_send():
-    driver.execute_script("window.Store.User = window.require('WAWebUserPrefsMeUser');")
-    driver.execute_script("window.Store.MsgKey = window.require('WAWebMsgKey');")
-    driver.execute_script("window.Store.SendMessage = window.require('WAWebSendMsgChatAction');")
-    driver.execute_script("window.Store.MediaObject = window.require('WAWebMediaStorage');")
-    driver.execute_script("window.Store.OpaqueData = window.require('WAWebMediaOpaqueData');")
-    driver.execute_script("window.Store.MediaTypes = window.require('WAWebMmsMediaTypes');")
-    driver.execute_script("window.Store.MediaPrep = window.require('WAWebPrepRawMedia');")
-    driver.execute_script("window.Store.MediaUpload = window.require('WAWebMediaMmsV4Upload');")
-
     driver.execute_script("""document.mediaInfoToFile = ({ data, mimetype, filename }) => {
                                 const binaryData = window.atob(data);
                                 const buffer = new ArrayBuffer(binaryData.length);
@@ -307,7 +317,6 @@ def logged_in():
 @app.route("/chats")
 def chats():
     latest_msg = []
-    driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
     all_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized)")
     contacts = driver.execute_script("return window.Store.Chat.map(contacts => contacts.formattedTitle);")
 
@@ -473,6 +482,4 @@ def down():
     while length_old == length_new:
         load_msg(num)
         length_new = driver.execute_script("return document.lengthc.msgs.length")
-        print("old: ", length_old)
-        print("new: ", length_new)
     return redirect(url_for("chat_session", num=num))
