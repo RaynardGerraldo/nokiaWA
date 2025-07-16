@@ -18,7 +18,7 @@
 <body>
     <!-- if file upload fails -->
     <div style="color: red;">
-        {{ error }}
+        {{ error[0] }}
     </div>
     <!-- add input here for files, take file upload -->
     <form action="/send" method="POST" enctype="multipart/form-data">

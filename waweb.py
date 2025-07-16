@@ -4,7 +4,7 @@ import threading
 import os
 import ast
 import emoji
-from flask import Flask, render_template, redirect, url_for, request, Response
+from flask import Flask, Response, render_template, redirect, url_for, request, flash, get_flashed_messages
 from werkzeug.utils import secure_filename
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -66,6 +66,7 @@ def login():
 def preload():
     driver.execute_script("window.Store = Object.assign({}, window.require('WAWebCollections'));")
     # history
+    driver.execute_script("window.Store.Cmd = window.require('WAWebCmd').Cmd;")
     driver.execute_script("window.Store.WidFactory = window.require('WAWebWidFactory');")
     driver.execute_script("window.Store.HistorySync = window.require('WAWebSendNonMessageDataRequest');")
     # load msg
@@ -94,10 +95,16 @@ def check_login():
 def load_history(num):
     driver.execute_script(f"document.chatWid = window.Store.WidFactory.createWid('{num}');")
     driver.execute_script("document.chat = window.Store.Chat.get(document.chatWid) ?? (await window.Store.Chat.find(document.chatWid));")
-    driver.execute_script("""await window.Store.HistorySync.sendPeerDataOperationRequest(3, {
-                                chatId: document.chat.id
-                             });
+    driver.execute_script("await window.Store.Cmd.openChatBottom(document.chat);")
+    h_code = driver.execute_script("""if(document.chat.endOfHistoryTransferType == 0){
+                                            await window.Store.HistorySync.sendPeerDataOperationRequest(3, {
+                                            chatId: document.chat.id
+                                        });
+                                      }
+                                      return document.chat.endOfHistoryTransferType;
     """)
+
+    return h_code
 
 def load_msg(num):
     driver.execute_script(f"document.chat = window.Store.Chat.get('{num}');")
@@ -296,6 +303,7 @@ def decrypt_media(msg):
     return base64str
 
 app = Flask(__name__)
+app.secret_key = os.urandom(32)
 session = {"logged_in": False}
 
 @app.route("/login")
@@ -352,11 +360,9 @@ def process_num():
 @app.route("/chatsession")
 def chat_session():
     num = request.args.get("num", None)
-    error = request.args.get("error", "")
+    error = get_flashed_messages()
     if num is None:
         return "<p>No chats available</p>"
-    if error:
-        error = "File upload failed, check file name for any special characters."
     if session_reload[num] == 0:
         load_msg(num)
         session_reload[num] += 1
@@ -406,8 +412,9 @@ def send():
 
     if fileupload:
         if fileupload.filename == '' or not file_bytes:
-            error = True
-            return redirect(url_for("chat_session", num=num, error=error))
+            error = "File upload failed, check file name for any special characters."
+            flash(error)
+            return redirect(url_for("chat_session", num=num))
         else:
             mimetype = fileupload.content_type
             file_base64 = base64.b64encode(file_bytes).decode('utf-8')
@@ -475,11 +482,21 @@ def download_media():
 @app.route("/pgdown", methods=['POST'])
 def down():
     num = request.form.get("num")
+    error = ""
+    tries = 0
     driver.execute_script(f"document.lengthc = await window.Store.Chat.find('{num}')")
     length_old = driver.execute_script("return document.lengthc.msgs.length")
     length_new = driver.execute_script("return document.lengthc.msgs.length")
-    load_history(num)
-    while length_old == length_new:
+    h_code = load_history(num)
+
+    if h_code == 1:
+       error = "No more messages to sync"
+    elif h_code == 4:
+       error = "Cannot sync history, only available on your phone."
+    while length_old == length_new and tries != 10:
+        h_code = load_history(num)
         load_msg(num)
         length_new = driver.execute_script("return document.lengthc.msgs.length")
+        tries+=1
+    flash(error)
     return redirect(url_for("chat_session", num=num))
