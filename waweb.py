@@ -404,8 +404,7 @@ def process_num():
 @app.route("/chatsession")
 def chat_session():
     num = request.args.get("num", None)
-    error = session.get('flash')
-    session.pop('flash', None)
+    error = session.pop('flash', "")
     if num is None:
         return "<p>No chats available</p>"
     if session_reload[num] == 0:
@@ -535,11 +534,14 @@ def down():
        error = "No more messages to sync"
     elif h_code == 4:
        error = "Cannot sync history, only available on your phone."
-    while length_old == length_new and tries != 10:
-        h_code = load_history(num)
-        load_msg(num)
-        driver.execute_script("window.Store.Cmd.closeActiveChat()")
-        length_new = driver.execute_script("return document.lengthc.msgs.length")
-        tries+=1
+    else:
+        while length_old == length_new and tries != 10:
+            h_code = load_history(num)
+            load_msg(num)
+            driver.execute_script("window.Store.Cmd.closeActiveChat()")
+            length_new = driver.execute_script("return document.lengthc.msgs.length")
+            tries+=1
+        if length_old == length_new:
+            error = "History sync failed, please try again."
     session['flash'] = error
     return redirect(url_for("chat_session", num=num))
