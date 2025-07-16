@@ -302,8 +302,19 @@ def decrypt_media(msg):
 
     return base64str
 
+def sec_key(app):
+    key_file = "secret-key.txt"
+    if os.path.exists(key_file):
+        with open(key_file, "r") as f:
+            return f.read()
+    else:
+        key = base64.b64encode(os.urandom(32)).decode()
+        with open(key_file, "w") as f:
+            f.write(key)
+            return key
+
 app = Flask(__name__)
-app.secret_key = os.urandom(32)
+app.secret_key = sec_key(app)
 session = {"logged_in": False}
 
 @app.route("/login")
@@ -333,6 +344,7 @@ def chats():
         if load_c is None:
             load_history(num)
             load_c = load_chat(num)
+            driver.execute_script("window.Store.Cmd.closeActiveChat()")
             if load_c is None:
                 latest_msg.append("No message history")
             else:
@@ -496,6 +508,7 @@ def down():
     while length_old == length_new and tries != 10:
         h_code = load_history(num)
         load_msg(num)
+        driver.execute_script("window.Store.Cmd.closeActiveChat()")
         length_new = driver.execute_script("return document.lengthc.msgs.length")
         tries+=1
     flash(error)
