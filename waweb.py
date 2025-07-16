@@ -4,7 +4,7 @@ import threading
 import os
 import ast
 import emoji
-from flask import Flask, Response, render_template, render_template_string, redirect, url_for, request, flash, get_flashed_messages
+from flask import Flask, Response, render_template, session, render_template_string, redirect, url_for, request
 from werkzeug.utils import secure_filename
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -90,7 +90,6 @@ def check_login():
         contact_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized);")
         for num in contact_num:
             session_reload[num] = 0
-        session['logged_in'] = True
 
 def load_history(num):
     driver.execute_script(f"document.chatWid = window.Store.WidFactory.createWid('{num}');")
@@ -355,6 +354,7 @@ def login_endpoint():
     if login():
         response = render_template('qr.html')
         threading.Thread(target=check_login).start()
+        session['logged_in'] = True
         return response
     else:
         return "<p>Ur logged in bro..go to /chats</p>"
@@ -404,7 +404,8 @@ def process_num():
 @app.route("/chatsession")
 def chat_session():
     num = request.args.get("num", None)
-    error = get_flashed_messages()
+    error = session.get('flash')
+    session.pop('flash', None)
     if num is None:
         return "<p>No chats available</p>"
     if session_reload[num] == 0:
@@ -454,7 +455,7 @@ def send():
     if fileupload:
         if fileupload.filename == '' or not file_bytes:
             error = "File upload failed, check file name for any special characters."
-            flash(error)
+            session['flash'] = error
             return redirect(url_for("chat_session", num=num))
         else:
             mimetype = fileupload.content_type
@@ -540,5 +541,5 @@ def down():
         driver.execute_script("window.Store.Cmd.closeActiveChat()")
         length_new = driver.execute_script("return document.lengthc.msgs.length")
         tries+=1
-    flash(error)
+    session['flash'] = error
     return redirect(url_for("chat_session", num=num))
