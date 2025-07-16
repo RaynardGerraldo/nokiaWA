@@ -97,6 +97,8 @@ def preload():
     driver.execute_script("window.Store.MediaUpload = window.require('WAWebMediaMmsV4Upload');")
     # get media
     driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
+    # logout
+    driver.execute_script("window.Store.AppState = window.require('WAWebSocketModel').Socket;")
 
 def load_history(num):
     driver.execute_script(f"document.chatWid = window.Store.WidFactory.createWid('{num}');")
@@ -372,6 +374,12 @@ def logged_in():
     if session.get('logged_in'):
         return "<p>Ur in...</p>"
     return "<p>U aint in bro...</p>"
+
+@app.route("/logout")
+def logout():
+    driver.execute_script("window.Store.AppState.logout();")
+    session.clear()
+    return redirect(url_for('securelogin'))
 
 @app.route("/chats")
 def chats():
