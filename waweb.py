@@ -4,7 +4,7 @@ import threading
 import os
 import ast
 import emoji
-from flask import Flask, Response, render_template, redirect, url_for, request, flash, get_flashed_messages
+from flask import Flask, Response, render_template, render_template_string, redirect, url_for, request, flash, get_flashed_messages
 from werkzeug.utils import secure_filename
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -41,7 +41,7 @@ media_download = {}
 session_reload = {}
 mediainfo = {}
 def login():
-    if session["logged_in"] is True:
+    if session.get('logged_in') is True:
         return False
     if os.path.exists("static/images/qrcode.png"):
         os.remove("static/images/qrcode.png")
@@ -90,7 +90,7 @@ def check_login():
         contact_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized);")
         for num in contact_num:
             session_reload[num] = 0
-        session["logged_in"] = True
+        session['logged_in'] = True
 
 def load_history(num):
     driver.execute_script(f"document.chatWid = window.Store.WidFactory.createWid('{num}');")
@@ -313,12 +313,45 @@ def sec_key(app):
             f.write(key)
             return key
 
+USERNAME = ""
+PASSWORD = ""
 app = Flask(__name__)
 app.secret_key = sec_key(app)
-session = {"logged_in": False}
+
+@app.route('/securelogin', methods=['GET', 'POST'])
+def securelogin():
+    if request.method == 'POST':
+        if request.form['username'] == USERNAME and request.form['password'] == PASSWORD:
+            session['seclogged_in'] = True
+            return redirect(url_for('login_endpoint'))
+        return 'Invalid credentials', 401
+    return render_template_string('''
+        <form method="post">
+          <input name="username">
+          <input name="password" type="password">
+          <input type="submit">
+        </form>
+    ''')
+
+@app.before_request
+def require_login():
+    allowed = ['securelogin']
+    ua = request.headers.get('User-Agent', '')
+    if not os.path.exists("user-agent.txt"):
+        with open("user-agent.txt", "w") as f:
+            allowed_ua = ua
+            f.write(ua)
+    else:
+        with open("user-agent.txt", "r") as f:
+            allowed_ua = f.read()
+
+    if ua != allowed_ua:
+        return "Forbidden", 403
+    if request.endpoint not in allowed and not session.get('seclogged_in'):
+        return redirect(url_for('securelogin'))
 
 @app.route("/login")
-def hello_world():
+def login_endpoint():
     if login():
         response = render_template('qr.html')
         threading.Thread(target=check_login).start()
@@ -328,10 +361,9 @@ def hello_world():
 
 @app.route("/logged-in")
 def logged_in():
-    if session.get("logged_in"):
+    if session.get('logged_in'):
         return "<p>Ur in...</p>"
     return "<p>U aint in bro...</p>"
-
 
 @app.route("/chats")
 def chats():
@@ -406,9 +438,6 @@ def chat_session():
     time.reverse()
 
     who_msg_t = list(zip(who, messages, time))
-
-    print(who_msg_t)
-
     return render_template("messages.html", who_msg_t=who_msg_t, num=num, error=error)
 
 @app.route("/send", methods=['POST'])
