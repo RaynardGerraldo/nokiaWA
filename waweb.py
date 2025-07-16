@@ -4,7 +4,7 @@ import threading
 import os
 import ast
 import emoji
-from flask import Flask, render_template, redirect, url_for, request, Response
+from flask import Flask, Response, render_template, session, render_template_string, redirect, url_for, request
 from werkzeug.utils import secure_filename
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -13,10 +13,26 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+USERNAME = ""
+PASSWORD = ""
+
+if not USERNAME and not PASSWORD:
+    if os.path.exists("cred.txt") and not os.path.getsize("cred.txt") == 0:
+        with open("cred.txt", "r") as f:
+            USERNAME = f.readline().strip('\n')
+            PASSWORD = f.readline()
+    else:
+        with open("cred.txt", "w") as f:
+            USERNAME = input("Username for secure login: ")
+            PASSWORD = input("Password for secure login: ")
+            f.write(f"{USERNAME}\n")
+            f.write(PASSWORD)
+
 chrome_options = webdriver.ChromeOptions()
 
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument(f"--user-data-dir={os.getcwd()}/chrome_user_data")
 chrome_options.add_argument("--headless=new")
 chrome_options.add_argument("--remote-debugging-port=9222")  # helps fix DevToolsActivePort error
 chrome_options.add_argument("--start-maximized")
@@ -40,8 +56,10 @@ print("Chromedriver Version: ", driver.capabilities["chrome"]["chromedriverVersi
 media_download = {}
 session_reload = {}
 mediainfo = {}
+pre = {'preload': 0}
+
 def login():
-    if session["logged_in"] is True:
+    if session.get('logged_in') is True:
         return False
     if os.path.exists("static/images/qrcode.png"):
         os.remove("static/images/qrcode.png")
@@ -64,40 +82,43 @@ def login():
 
 # everything needed for all current features
 def preload():
-    driver.execute_script("window.Store = Object.assign({}, window.require('WAWebCollections'));")
-    # history
-    driver.execute_script("window.Store.WidFactory = window.require('WAWebWidFactory');")
-    driver.execute_script("window.Store.HistorySync = window.require('WAWebSendNonMessageDataRequest');")
-    # load msg
-    driver.execute_script("window.Store.ConversationMsgs = window.require('WAWebChatLoadMessages');")
-    # send
-    driver.execute_script("window.Store.User = window.require('WAWebUserPrefsMeUser');")
-    driver.execute_script("window.Store.MsgKey = window.require('WAWebMsgKey');")
-    driver.execute_script("window.Store.SendMessage = window.require('WAWebSendMsgChatAction');")
-    driver.execute_script("window.Store.MediaObject = window.require('WAWebMediaStorage');")
-    driver.execute_script("window.Store.OpaqueData = window.require('WAWebMediaOpaqueData');")
-    driver.execute_script("window.Store.MediaTypes = window.require('WAWebMmsMediaTypes');")
-    driver.execute_script("window.Store.MediaPrep = window.require('WAWebPrepRawMedia');")
-    driver.execute_script("window.Store.MediaUpload = window.require('WAWebMediaMmsV4Upload');")
-    # get media
-    driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
-
-def check_login():
     if WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Chats']"))):
         print("hey it works")
-        preload()
+        driver.execute_script("window.Store = Object.assign({}, window.require('WAWebCollections'));")
+        # history
+        driver.execute_script("window.Store.Cmd = window.require('WAWebCmd').Cmd;")
+        driver.execute_script("window.Store.WidFactory = window.require('WAWebWidFactory');")
+        driver.execute_script("window.Store.HistorySync = window.require('WAWebSendNonMessageDataRequest');")
+        # load msg
+        driver.execute_script("window.Store.ConversationMsgs = window.require('WAWebChatLoadMessages');")
+        # send
+        driver.execute_script("window.Store.User = window.require('WAWebUserPrefsMeUser');")
+        driver.execute_script("window.Store.MsgKey = window.require('WAWebMsgKey');")
+        driver.execute_script("window.Store.SendMessage = window.require('WAWebSendMsgChatAction');")
+        driver.execute_script("window.Store.MediaObject = window.require('WAWebMediaStorage');")
+        driver.execute_script("window.Store.OpaqueData = window.require('WAWebMediaOpaqueData');")
+        driver.execute_script("window.Store.MediaTypes = window.require('WAWebMmsMediaTypes');")
+        driver.execute_script("window.Store.MediaPrep = window.require('WAWebPrepRawMedia');")
+        driver.execute_script("window.Store.MediaUpload = window.require('WAWebMediaMmsV4Upload');")
+        # get media
+        driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
         contact_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized);")
         for num in contact_num:
             session_reload[num] = 0
-        session["logged_in"] = True
 
 def load_history(num):
     driver.execute_script(f"document.chatWid = window.Store.WidFactory.createWid('{num}');")
     driver.execute_script("document.chat = window.Store.Chat.get(document.chatWid) ?? (await window.Store.Chat.find(document.chatWid));")
-    driver.execute_script("""await window.Store.HistorySync.sendPeerDataOperationRequest(3, {
-                                chatId: document.chat.id
-                             });
+    driver.execute_script("await window.Store.Cmd.openChatBottom(document.chat);")
+    h_code = driver.execute_script("""if(document.chat.endOfHistoryTransferType == 0){
+                                            await window.Store.HistorySync.sendPeerDataOperationRequest(3, {
+                                            chatId: document.chat.id
+                                        });
+                                      }
+                                      return document.chat.endOfHistoryTransferType;
     """)
+
+    return h_code
 
 def load_msg(num):
     driver.execute_script(f"document.chat = window.Store.Chat.get('{num}');")
@@ -295,24 +316,69 @@ def decrypt_media(msg):
 
     return base64str
 
+def sec_key(app):
+    if os.path.exists("secret-key.txt") and not os.path.getsize("secret-key.txt") == 0:
+        with open("secret-key.txt", "r") as f:
+            return f.read()
+    else:
+        key = base64.b64encode(os.urandom(32)).decode()
+        with open("secret-key.txt", "w") as f:
+            f.write(key)
+            return key
+
 app = Flask(__name__)
-session = {"logged_in": False}
+app.secret_key = sec_key(app)
+
+@app.route('/securelogin', methods=['GET', 'POST'])
+def securelogin():
+    if request.method == 'POST':
+        if request.form['username'] == USERNAME and request.form['password'] == PASSWORD:
+            session['seclogged_in'] = True
+            return redirect(url_for('login_endpoint'))
+        return 'Invalid credentials', 401
+    return render_template_string('''
+        <form method="post">
+          <input name="username">
+          <input name="password" type="password">
+          <input type="submit">
+        </form>
+    ''')
+
+@app.before_request
+def require_login():
+    allowed = ['securelogin']
+    ua = request.headers.get('User-Agent', '')
+    if not os.path.exists("user-agent.txt") and not os.path.getsize("user-agent.txt") == 0:
+        with open("user-agent.txt", "w") as f:
+            allowed_ua = ua
+            f.write(ua)
+    else:
+        with open("user-agent.txt", "r") as f:
+            allowed_ua = f.read()
+
+    if ua != allowed_ua:
+        return "Forbidden", 403
+    elif request.endpoint not in allowed and not session.get('seclogged_in'):
+        return redirect(url_for('securelogin'))
+    elif "logged_in" in session and pre['preload'] == 0:
+        preload()
+        pre['preload'] = 1  
 
 @app.route("/login")
-def hello_world():
+def login_endpoint():
     if login():
         response = render_template('qr.html')
-        threading.Thread(target=check_login).start()
+        threading.Thread(target=preload).start()
+        session['logged_in'] = True
         return response
     else:
         return "<p>Ur logged in bro..go to /chats</p>"
 
 @app.route("/logged-in")
 def logged_in():
-    if session.get("logged_in"):
+    if session.get('logged_in'):
         return "<p>Ur in...</p>"
     return "<p>U aint in bro...</p>"
-
 
 @app.route("/chats")
 def chats():
@@ -325,6 +391,7 @@ def chats():
         if load_c is None:
             load_history(num)
             load_c = load_chat(num)
+            driver.execute_script("window.Store.Cmd.closeActiveChat()")
             if load_c is None:
                 latest_msg.append("No message history")
             else:
@@ -352,11 +419,9 @@ def process_num():
 @app.route("/chatsession")
 def chat_session():
     num = request.args.get("num", None)
-    error = request.args.get("error", "")
+    error = session.pop('flash', "")
     if num is None:
         return "<p>No chats available</p>"
-    if error:
-        error = "File upload failed, check file name for any special characters."
     if session_reload[num] == 0:
         load_msg(num)
         session_reload[num] += 1
@@ -388,9 +453,6 @@ def chat_session():
     time.reverse()
 
     who_msg_t = list(zip(who, messages, time))
-
-    print(who_msg_t)
-
     return render_template("messages.html", who_msg_t=who_msg_t, num=num, error=error)
 
 @app.route("/send", methods=['POST'])
@@ -406,8 +468,9 @@ def send():
 
     if fileupload:
         if fileupload.filename == '' or not file_bytes:
-            error = True
-            return redirect(url_for("chat_session", num=num, error=error))
+            error = "File upload failed, check file name for any special characters."
+            session['flash'] = error
+            return redirect(url_for("chat_session", num=num))
         else:
             mimetype = fileupload.content_type
             file_base64 = base64.b64encode(file_bytes).decode('utf-8')
@@ -475,11 +538,25 @@ def download_media():
 @app.route("/pgdown", methods=['POST'])
 def down():
     num = request.form.get("num")
+    error = ""
+    tries = 0
     driver.execute_script(f"document.lengthc = await window.Store.Chat.find('{num}')")
     length_old = driver.execute_script("return document.lengthc.msgs.length")
     length_new = driver.execute_script("return document.lengthc.msgs.length")
-    load_history(num)
-    while length_old == length_new:
-        load_msg(num)
-        length_new = driver.execute_script("return document.lengthc.msgs.length")
+    h_code = load_history(num)
+
+    if h_code == 1:
+       error = "No more messages to sync"
+    elif h_code == 4:
+       error = "Cannot sync history, only available on your phone."
+    else:
+        while length_old == length_new and tries != 10:
+            h_code = load_history(num)
+            load_msg(num)
+            driver.execute_script("window.Store.Cmd.closeActiveChat()")
+            length_new = driver.execute_script("return document.lengthc.msgs.length")
+            tries+=1
+        if length_old == length_new:
+            error = "History sync failed, please try again."
+    session['flash'] = error
     return redirect(url_for("chat_session", num=num))
