@@ -8,6 +8,7 @@
 <body>
     <h4>{{ yourname }}</h4>
     <a href="">Refresh</a>
+    <a href="/logout">Logout</a>
     <ul>
         {% for c,msg in contactmsg.items() %}
             <form action="/processnum" method="POST">

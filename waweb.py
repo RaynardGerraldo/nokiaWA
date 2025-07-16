@@ -59,8 +59,6 @@ mediainfo = {}
 pre = {'preload': 0}
 
 def login():
-    if session.get('logged_in') is True:
-        return False
     if os.path.exists("static/images/qrcode.png"):
         os.remove("static/images/qrcode.png")
     WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.TAG_NAME, 'canvas')))
@@ -78,33 +76,29 @@ def login():
     with open("static/images/qrcode.png", "wb") as f:
         f.write(canvas_png)
 
-    return True
-
 # everything needed for all current features
 def preload():
-    if WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Chats']"))):
-        print("hey it works")
-        driver.execute_script("window.Store = Object.assign({}, window.require('WAWebCollections'));")
-        # history
-        driver.execute_script("window.Store.Cmd = window.require('WAWebCmd').Cmd;")
-        driver.execute_script("window.Store.WidFactory = window.require('WAWebWidFactory');")
-        driver.execute_script("window.Store.HistorySync = window.require('WAWebSendNonMessageDataRequest');")
-        # load msg
-        driver.execute_script("window.Store.ConversationMsgs = window.require('WAWebChatLoadMessages');")
-        # send
-        driver.execute_script("window.Store.User = window.require('WAWebUserPrefsMeUser');")
-        driver.execute_script("window.Store.MsgKey = window.require('WAWebMsgKey');")
-        driver.execute_script("window.Store.SendMessage = window.require('WAWebSendMsgChatAction');")
-        driver.execute_script("window.Store.MediaObject = window.require('WAWebMediaStorage');")
-        driver.execute_script("window.Store.OpaqueData = window.require('WAWebMediaOpaqueData');")
-        driver.execute_script("window.Store.MediaTypes = window.require('WAWebMmsMediaTypes');")
-        driver.execute_script("window.Store.MediaPrep = window.require('WAWebPrepRawMedia');")
-        driver.execute_script("window.Store.MediaUpload = window.require('WAWebMediaMmsV4Upload');")
-        # get media
-        driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
-        contact_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized);")
-        for num in contact_num:
-            session_reload[num] = 0
+    print("hey it works")
+    driver.execute_script("window.Store = Object.assign({}, window.require('WAWebCollections'));")
+    # history
+    driver.execute_script("window.Store.Cmd = window.require('WAWebCmd').Cmd;")
+    driver.execute_script("window.Store.WidFactory = window.require('WAWebWidFactory');")
+    driver.execute_script("window.Store.HistorySync = window.require('WAWebSendNonMessageDataRequest');")
+    # load msg
+    driver.execute_script("window.Store.ConversationMsgs = window.require('WAWebChatLoadMessages');")
+    # send
+    driver.execute_script("window.Store.User = window.require('WAWebUserPrefsMeUser');")
+    driver.execute_script("window.Store.MsgKey = window.require('WAWebMsgKey');")
+    driver.execute_script("window.Store.SendMessage = window.require('WAWebSendMsgChatAction');")
+    driver.execute_script("window.Store.MediaObject = window.require('WAWebMediaStorage');")
+    driver.execute_script("window.Store.OpaqueData = window.require('WAWebMediaOpaqueData');")
+    driver.execute_script("window.Store.MediaTypes = window.require('WAWebMmsMediaTypes');")
+    driver.execute_script("window.Store.MediaPrep = window.require('WAWebPrepRawMedia');")
+    driver.execute_script("window.Store.MediaUpload = window.require('WAWebMediaMmsV4Upload');")
+    # get media
+    driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
+    # logout
+    driver.execute_script("window.Store.AppState = window.require('WAWebSocketModel').Socket;")
 
 def load_history(num):
     driver.execute_script(f"document.chatWid = window.Store.WidFactory.createWid('{num}');")
@@ -348,31 +342,32 @@ def securelogin():
 def require_login():
     allowed = ['securelogin']
     ua = request.headers.get('User-Agent', '')
-    if not os.path.exists("user-agent.txt") and not os.path.getsize("user-agent.txt") == 0:
+    if os.path.exists("user-agent.txt") and not os.path.getsize("user-agent.txt") == 0:
+        with open("user-agent.txt", "r") as f:
+            allowed_ua = f.read()
+    else:
         with open("user-agent.txt", "w") as f:
             allowed_ua = ua
             f.write(ua)
-    else:
-        with open("user-agent.txt", "r") as f:
-            allowed_ua = f.read()
+ 
 
+    if pre['preload'] == 0:
+        preload()
+        pre['preload'] = 1
     if ua != allowed_ua:
         return "Forbidden", 403
     elif request.endpoint not in allowed and not session.get('seclogged_in'):
         return redirect(url_for('securelogin'))
-    elif "logged_in" in session and pre['preload'] == 0:
-        preload()
-        pre['preload'] = 1  
 
 @app.route("/login")
 def login_endpoint():
-    if login():
+    response = ""
+    if not session.get('logged_in'):
+        login()
         response = render_template('qr.html')
-        threading.Thread(target=preload).start()
-        session['logged_in'] = True
-        return response
     else:
-        return "<p>Ur logged in bro..go to /chats</p>"
+        response = "<p>Ur logged in bro..go to /chats</p>"
+    return response
 
 @app.route("/logged-in")
 def logged_in():
@@ -380,11 +375,23 @@ def logged_in():
         return "<p>Ur in...</p>"
     return "<p>U aint in bro...</p>"
 
+@app.route("/logout")
+def logout():
+    driver.execute_script("window.Store.AppState.logout();")
+    session.clear()
+    return redirect(url_for('securelogin'))
+
 @app.route("/chats")
 def chats():
+    if not session.get('logged_in'):
+        if WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Chats']"))):
+            session['logged_in'] = True
     latest_msg = []
     all_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized)")
     contacts = driver.execute_script("return window.Store.Chat.map(contacts => contacts.formattedTitle);")
+    if not session_reload:
+        for num in all_num:
+            session_reload[num] = 0
 
     for num in all_num:
         load_c = load_chat(num)
