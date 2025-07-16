@@ -6,7 +6,8 @@ Self Host this please, for your own safety
 
 Notice: If there is a "SessionNotCreatedException: DevToolsActivePort file doesn't exist" error, or, "selenium.common.exceptions.TimeoutException: Message:" during /login, follow the [Chromedriver Instruction](#chromedriver-instruction)
 
-Check out the [Secure Branch](https://github.com/RaynardGerraldo/nokiaWA/tree/secure) for a more secure approach for public hosting
+To better secure this site when self hosting, a /securelogin page is available before any requests to Whatsapp is possible to ward off intruders + only allowing user agent of the requesting phone.
+
 ## Dependencies
 
 - Python
@@ -24,8 +25,9 @@ git clone https://github.com/RaynardGerraldo/nokiaWA
 cd nokiaWA/
 flask --app waweb run
 
+-- enter username and password for /securelogin, both in the terminal (only once) then in the browser.
 -- go to /login, scan qr code
--- console should output "hey it works" or check "/logged-in", go to /chats after
+-- then, go to /chats
 -- click on any contact you want
 -- now you can read and send messages
 

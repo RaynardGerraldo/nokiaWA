@@ -13,6 +13,21 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+USERNAME = ""
+PASSWORD = ""
+
+if not USERNAME and not PASSWORD:
+    if os.path.exists("cred.txt") and not os.path.getsize("cred.txt") == 0:
+        with open("cred.txt", "r") as f:
+            USERNAME = f.readline().strip('\n')
+            PASSWORD = f.readline()
+    else:
+        with open("cred.txt", "w") as f:
+            USERNAME = input("Username for secure login: ")
+            PASSWORD = input("Password for secure login: ")
+            f.write(f"{USERNAME}\n")
+            f.write(PASSWORD)
+
 chrome_options = webdriver.ChromeOptions()
 
 chrome_options.add_argument("--no-sandbox")
@@ -38,7 +53,6 @@ else:
 
 driver.get("https://web.whatsapp.com/")
 print("Chromedriver Version: ", driver.capabilities["chrome"]["chromedriverVersion"])
-#local_session = {}
 media_download = {}
 session_reload = {}
 mediainfo = {}
@@ -303,18 +317,15 @@ def decrypt_media(msg):
     return base64str
 
 def sec_key(app):
-    key_file = "secret-key.txt"
-    if os.path.exists(key_file):
-        with open(key_file, "r") as f:
+    if os.path.exists("secret-key.txt") and not os.path.getsize("secret-key.txt") == 0:
+        with open("secret-key.txt", "r") as f:
             return f.read()
     else:
         key = base64.b64encode(os.urandom(32)).decode()
-        with open(key_file, "w") as f:
+        with open("secret-key.txt", "w") as f:
             f.write(key)
             return key
 
-USERNAME = ""
-PASSWORD = ""
 app = Flask(__name__)
 app.secret_key = sec_key(app)
 
@@ -337,7 +348,7 @@ def securelogin():
 def require_login():
     allowed = ['securelogin']
     ua = request.headers.get('User-Agent', '')
-    if not os.path.exists("user-agent.txt"):
+    if not os.path.exists("user-agent.txt") and not os.path.getsize("user-agent.txt") == 0:
         with open("user-agent.txt", "w") as f:
             allowed_ua = ua
             f.write(ua)
