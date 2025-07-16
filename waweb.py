@@ -17,6 +17,7 @@ chrome_options = webdriver.ChromeOptions()
 
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
+chrome_options.add_argument(f"--user-data-dir={os.getcwd()}/chrome_user_data")
 chrome_options.add_argument("--headless=new")
 chrome_options.add_argument("--remote-debugging-port=9222")  # helps fix DevToolsActivePort error
 chrome_options.add_argument("--start-maximized")
@@ -37,9 +38,12 @@ else:
 
 driver.get("https://web.whatsapp.com/")
 print("Chromedriver Version: ", driver.capabilities["chrome"]["chromedriverVersion"])
+#local_session = {}
 media_download = {}
 session_reload = {}
 mediainfo = {}
+pre = {'preload': 0}
+
 def login():
     if session.get('logged_in') is True:
         return False
@@ -64,29 +68,26 @@ def login():
 
 # everything needed for all current features
 def preload():
-    driver.execute_script("window.Store = Object.assign({}, window.require('WAWebCollections'));")
-    # history
-    driver.execute_script("window.Store.Cmd = window.require('WAWebCmd').Cmd;")
-    driver.execute_script("window.Store.WidFactory = window.require('WAWebWidFactory');")
-    driver.execute_script("window.Store.HistorySync = window.require('WAWebSendNonMessageDataRequest');")
-    # load msg
-    driver.execute_script("window.Store.ConversationMsgs = window.require('WAWebChatLoadMessages');")
-    # send
-    driver.execute_script("window.Store.User = window.require('WAWebUserPrefsMeUser');")
-    driver.execute_script("window.Store.MsgKey = window.require('WAWebMsgKey');")
-    driver.execute_script("window.Store.SendMessage = window.require('WAWebSendMsgChatAction');")
-    driver.execute_script("window.Store.MediaObject = window.require('WAWebMediaStorage');")
-    driver.execute_script("window.Store.OpaqueData = window.require('WAWebMediaOpaqueData');")
-    driver.execute_script("window.Store.MediaTypes = window.require('WAWebMmsMediaTypes');")
-    driver.execute_script("window.Store.MediaPrep = window.require('WAWebPrepRawMedia');")
-    driver.execute_script("window.Store.MediaUpload = window.require('WAWebMediaMmsV4Upload');")
-    # get media
-    driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
-
-def check_login():
     if WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Chats']"))):
         print("hey it works")
-        preload()
+        driver.execute_script("window.Store = Object.assign({}, window.require('WAWebCollections'));")
+        # history
+        driver.execute_script("window.Store.Cmd = window.require('WAWebCmd').Cmd;")
+        driver.execute_script("window.Store.WidFactory = window.require('WAWebWidFactory');")
+        driver.execute_script("window.Store.HistorySync = window.require('WAWebSendNonMessageDataRequest');")
+        # load msg
+        driver.execute_script("window.Store.ConversationMsgs = window.require('WAWebChatLoadMessages');")
+        # send
+        driver.execute_script("window.Store.User = window.require('WAWebUserPrefsMeUser');")
+        driver.execute_script("window.Store.MsgKey = window.require('WAWebMsgKey');")
+        driver.execute_script("window.Store.SendMessage = window.require('WAWebSendMsgChatAction');")
+        driver.execute_script("window.Store.MediaObject = window.require('WAWebMediaStorage');")
+        driver.execute_script("window.Store.OpaqueData = window.require('WAWebMediaOpaqueData');")
+        driver.execute_script("window.Store.MediaTypes = window.require('WAWebMmsMediaTypes');")
+        driver.execute_script("window.Store.MediaPrep = window.require('WAWebPrepRawMedia');")
+        driver.execute_script("window.Store.MediaUpload = window.require('WAWebMediaMmsV4Upload');")
+        # get media
+        driver.execute_script("window.Store.DownloadManager = window.require('WAWebDownloadManager').downloadManager;")
         contact_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized);")
         for num in contact_num:
             session_reload[num] = 0
@@ -346,14 +347,17 @@ def require_login():
 
     if ua != allowed_ua:
         return "Forbidden", 403
-    if request.endpoint not in allowed and not session.get('seclogged_in'):
+    elif request.endpoint not in allowed and not session.get('seclogged_in'):
         return redirect(url_for('securelogin'))
+    elif "logged_in" in session and pre['preload'] == 0:
+        preload()
+        pre['preload'] = 1  
 
 @app.route("/login")
 def login_endpoint():
     if login():
         response = render_template('qr.html')
-        threading.Thread(target=check_login).start()
+        threading.Thread(target=preload).start()
         session['logged_in'] = True
         return response
     else:
