@@ -32,7 +32,6 @@ pip install -r requirements.txt
 ##  Usage
 
 ```bash
-git clone https://github.com/RaynardGerraldo/nokiaWA
 cd nokiaWA/
 gunicorn waweb:app -b 127.0.0.1:5000 --workers 3
 ```
@@ -62,7 +61,7 @@ Then:
 
 ##  Chromedriver Instruction
 
-Only follow this section if you experience the errors in the [Notice](#notice) above. Default ChromeDriver should work fine otherwise.
+Only follow this section if you experience the errors in the [notice](#notice) above. Default ChromeDriver should work fine otherwise.
 
 ### For Linux, Windows, macOS
 
