@@ -17,7 +17,7 @@ Refer to the [Chromedriver Instructions](#chromedriver-instruction).
 
 ##  Setup
 
-Ensure Python is installed. 
+Ensure Python and Chrome/Chromium is installed.
 
 Install the required libraries via pip:
 
@@ -25,6 +25,10 @@ Install the required libraries via pip:
 git clone https://github.com/RaynardGerraldo/nokiaWA
 cd nokiaWA/
 pip install -r requirements.txt
+```
+Then, input credentials needed for /securelogin:
+```
+flask --app waweb run
 ```
 
 ---
@@ -38,10 +42,9 @@ gunicorn waweb:app -b 127.0.0.1:5000 --workers 3
 
 Then:
 
-1. Enter your `/securelogin` username and password (input appears in terminal only once).
-2. Go to `/login`, scan the QR code.
-3. Go to `/chats`, click a contact.
-4. Start reading and sending messages!
+1. Go to `/login`, scan the QR code.
+2. Go to `/chats`, click a contact.
+3. Start reading and sending messages!
 
 ---
 
