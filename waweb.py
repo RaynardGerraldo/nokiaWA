@@ -27,6 +27,8 @@ if not USERNAME and not PASSWORD:
             PASSWORD = input("Password for secure login: ")
             f.write(f"{USERNAME}\n")
             f.write(PASSWORD)
+            print("Credentials initialized, re-run app with gunicorn command in README.")
+            exit()
 
 chrome_options = webdriver.ChromeOptions()
 
