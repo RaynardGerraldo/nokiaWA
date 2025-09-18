@@ -158,7 +158,7 @@ def load_send():
 
 def media_send(ids, mediainfo, caption, as_attach):
     driver.execute_script(f"document.chat = window.Store.Chat.get('{ids}');")
-    driver.execute_script("document.meUser = window.Store.User.getMaybeMeUser();")
+    driver.execute_script("document.meUser = window.Store.User.getMaybeMePnUser();")
     driver.execute_script("document.newId = await window.Store.MsgKey.newId();")
     driver.execute_script("""document.newMsgId = new window.Store.MsgKey({
                                 from: document.meUser,
@@ -237,7 +237,7 @@ def media_send(ids, mediainfo, caption, as_attach):
 
 def send_message(ids, response):
     driver.execute_script(f"document.chat = window.Store.Chat.get('{ids}');")
-    driver.execute_script("document.meUser = window.Store.User.getMaybeMeUser();")
+    driver.execute_script("document.meUser = window.Store.User.getMaybeMePnUser();")
     driver.execute_script("document.newId = await window.Store.MsgKey.newId();")
     driver.execute_script("""document.newMsgId = new window.Store.MsgKey({
                                 from: document.meUser,
@@ -412,7 +412,7 @@ def chats():
                
     load_send()
     contact_msg = dict(zip(contacts, all_l_msg))
-    yourname = driver.execute_script("return window.Store.Contact.get(window.Store.User.getMeUser()._serialized).name")
+    yourname = driver.execute_script("return window.Store.Contact.get(window.Store.User.getMaybeMePnUser()._serialized).name")
 
     return render_template("chats.html", contactmsg=contact_msg, yourname=yourname)
 
