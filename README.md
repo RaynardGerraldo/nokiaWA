@@ -13,6 +13,8 @@ If you encounter the following errors during `/login`:
 
 Refer to the [Chromedriver Instructions](#chromedriver-instruction).
 
+If you get a 403 Forbidden on /securelogin or any endpoint, remove the user-agent.txt file, and re-request from the device you will be using for nokiaWA
+
 ---
 
 ##  Setup
