@@ -20,6 +20,7 @@ def sec_key(app):
 app = Flask(__name__)
 app.secret_key = sec_key(app)
 pre = {'preload': 0}
+mediainfo = {}
 
 @app.route('/securelogin', methods=['GET', 'POST'])
 def secure_login_route():
@@ -88,10 +89,10 @@ def chats_route():
 
 @app.route("/processnum", methods=['POST'])
 def process_num_route():
-    zip_contact = process_num()
+    zip_contact = waweb.process_num()
     name_num = dict(zip_contact)
     num = request.form.get("contact")
-    return redirect(url_for("chat_session", num=name_num.get(num)))
+    return redirect(url_for("chat_session_route", num=name_num.get(num)))
 
 @app.route("/chatsession")
 def chat_session_route():
@@ -99,10 +100,8 @@ def chat_session_route():
     error = session.pop('flash', "")
     if num is None:
         return "<p>No chats available</p>"
-    if session_reload[num] == 0:
-        waweb.load_msg(num)
-        session_reload[num] += 1
-    who_msg_t = waweb.chat_session()
+    waweb.load_msg(num)
+    who_msg_t = waweb.chat_session(num)
     return render_template("messages.html", who_msg_t=who_msg_t, num=num, error=error)
 
 @app.route("/send", methods=['POST'])
@@ -120,7 +119,7 @@ def send():
         if fileupload.filename == '' or not file_bytes:
             error = "File upload failed, check file name for any special characters."
             session['flash'] = error
-            return redirect(url_for("chat_session", num=num))
+            return redirect(url_for("chat_session_route", num=num))
         else:
             mimetype = fileupload.content_type
             file_base64 = base64.b64encode(file_bytes).decode('utf-8')
@@ -139,49 +138,41 @@ def send():
     # plain text
     else:
         waweb.send_message(num, msg)
-    return redirect(url_for("chat_session", num=num))
+    return redirect(url_for("chat_session_route", num=num))
 
 @app.route("/downmedia", methods=['POST', 'GET'])
 def download_media():
-    if media_download and request.method == 'POST':
-        media_download.clear()
-
-    if not media_download and request.method == 'POST':
+    if request.method == 'POST':
         media = request.form.get("media")
         media_type = request.form.get("type")
         filename = request.form.get("filename")
         mimetype = request.form.get("mimetype")
 
-        media_download["type"] = media_type
-        media_download["media"] = media
-        media_download["filename"] = filename
-        media_download["mimetype"] = mimetype
-
-    if media_download["type"] == "image":
-        file_bytes = base64.b64decode(media_download["media"])
+    if media_type == "image":
+        file_bytes = base64.b64decode(media)
         response = Response(file_bytes, mimetype="image/jpeg")
         response.headers["Content-Disposition"] = "attachment; filename=image.jpg"
 
-    elif media_download["type"] == "video":
-        video = ast.literal_eval(media_download["media"])
+    elif media_type == "video":
+        video = ast.literal_eval(media)
         file_bytes = base64.b64decode(waweb.decrypt_media(video))
         response = Response(file_bytes, mimetype="video/mp4")
         response.headers["Content-Disposition"] = "attachment; filename=video.mp4"
 
-    elif media_download["type"] == "audio":
-        audio = ast.literal_eval(media_download["media"])
+    elif media_type == "audio":
+        audio = ast.literal_eval(media)
         file_bytes = base64.b64decode(waweb.decrypt_media(audio))
         response = Response(file_bytes, mimetype="audio/mpeg")
         response.headers["Content-Disposition"] = "attachment; filename=audio.mp3"
 
-    elif media_download["type"] == "document":
-        document = ast.literal_eval(media_download["media"])
+    elif media_type == "document":
+        document = ast.literal_eval(media)
         file_bytes = base64.b64decode(waweb.decrypt_media(document))
-        response = Response(file_bytes, mimetype=media_download["mimetype"])
-        response.headers["Content-Disposition"] = f"""attachment; filename={media_download["filename"]}"""
+        response = Response(file_bytes, mimetype=mimetype)
+        response.headers["Content-Disposition"] = f"""attachment; filename={filename}"""
 
-    if request.method == 'GET':
-        media_download.clear()
+    #if request.method == 'GET':
+        #media_download.clear()
 
     return response
 
@@ -190,6 +181,4 @@ def down_route():
     num = request.form.get("num")
     error = waweb.down(num)
     session['flash'] = error
-    return redirect(url_for("chat_session", num=num))
-
-
+    return redirect(url_for("chat_session_route", num=num))

@@ -50,9 +50,6 @@ else:
 driver.get("https://web.whatsapp.com/")
 print("Chromedriver Version: ", driver.capabilities["chrome"]["chromedriverVersion"])
 media_download = {}
-session_reload = {}
-mediainfo = {}
-pre = {'preload': 0}
 
 def login():
     if os.path.exists("static/images/qrcode.png"):
@@ -81,7 +78,7 @@ def process_num():
 
     return zip(contacts,contact_num)
 
-def chat_session():
+def chat_session(num):
     msgdata = driver.execute_script(f"""return document.msgdata = window.Store.Chat.get('{num}').msgs._models.map(m => ({{
                                             body: m.body,
                                             timestamp: m.t,
@@ -109,6 +106,7 @@ def chat_session():
     time.reverse()
 
     who_msg_t = list(zip(who, messages, time))
+    return who_msg_t
 
 def down(num):
    error = ""
@@ -380,10 +378,6 @@ def chats():
     latest_msg = []
     all_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized)")
     contacts = driver.execute_script("return window.Store.Chat.map(contacts => contacts.formattedTitle);")
-    if not session_reload:
-        for num in all_num:
-            session_reload[num] = 0
-
     for num in all_num:
         load_c = load_chat(num)
         if load_c is None:
