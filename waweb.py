@@ -2,6 +2,7 @@ from datetime import datetime
 import base64
 import os
 import emoji
+import bcrypt
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
@@ -9,10 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-USERNAME = ""
-PASSWORD = ""
-
-if not USERNAME and not PASSWORD:
+def secure_login():
     if os.path.exists("cred.txt") and not os.path.getsize("cred.txt") == 0:
         with open("cred.txt", "r") as f:
             USERNAME = f.readline().strip('\n')
@@ -22,9 +20,9 @@ if not USERNAME and not PASSWORD:
             USERNAME = input("Username for secure login: ")
             PASSWORD = input("Password for secure login: ")
             f.write(f"{USERNAME}\n")
-            f.write(PASSWORD)
-            print("Credentials initialized, re-run app with gunicorn command in README.")
-            exit()
+            hashed = bcrypt.hashpw(PASSWORD.encode(), bcrypt.gensalt())
+            f.write(hashed.decode())
+    return [USERNAME,PASSWORD]
 
 chrome_options = webdriver.ChromeOptions()
 
@@ -55,7 +53,6 @@ media_download = {}
 session_reload = {}
 mediainfo = {}
 pre = {'preload': 0}
-cache_numbers = []
 
 def login():
     if os.path.exists("static/images/qrcode.png"):
@@ -134,7 +131,7 @@ def down(num):
            tries+=1
        if length_old == length_new:
            error = "History sync failed, please try again."
-    return error
+   return error
 
 # everything needed for all current features
 def preload():
@@ -370,19 +367,21 @@ def decrypt_media(msg):
 
     return base64str
 
-def chats(cache_numbers):
-    if not session.get('logged_in'):
-        if WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Chats']"))):
-            session['logged_in'] = True
+def your_name():
+    name = driver.execute_script("return window.Store.Contact.get(window.Store.User.getMaybeMePnUser()._serialized).name")
+    return name
+
+def chats():
+    if WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, '[aria-label="Chats"]'))):
+        pass
+    else:
+        print("Chats are not visible yet")
+        return False
     latest_msg = []
     all_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized)")
     contacts = driver.execute_script("return window.Store.Chat.map(contacts => contacts.formattedTitle);")
-    if all_num:
-         for num in all_num:
-             cache_numbers.append(num)
-    cache_numbers = list(set(cache_numbers))
     if not session_reload:
-        for num in cache_numbers:
+        for num in all_num:
             session_reload[num] = 0
 
     for num in all_num:
@@ -402,6 +401,4 @@ def chats(cache_numbers):
                
     load_send()
     contact_msg = dict(zip(contacts, all_l_msg))
-    yourname = driver.execute_script("return window.Store.Contact.get(window.Store.User.getMaybeMePnUser()._serialized).name")
-
-    return render_template("chats.html", contactmsg=contact_msg, yourname=yourname)
+    return contact_msg

@@ -1,9 +1,11 @@
 import os
 import ast
+import bcrypt
 import base64
 from werkzeug.utils import secure_filename
 from flask import Flask, Response, render_template, session, render_template_string, redirect, url_for, request
-from . import waweb
+import waweb
+import run
 
 def sec_key(app):
     if os.path.exists("secret-key.txt") and not os.path.getsize("secret-key.txt") == 0:
@@ -15,12 +17,17 @@ def sec_key(app):
             f.write(key)
             return key
 
+app = Flask(__name__)
+app.secret_key = sec_key(app)
+pre = {'preload': 0}
+
 @app.route('/securelogin', methods=['GET', 'POST'])
-def securelogin():
+def secure_login_route():
     if request.method == 'POST':
-        if request.form['username'] == USERNAME and request.form['password'] == PASSWORD:
+        creds = waweb.secure_login()
+        if request.form['username'] == creds[0] and bcrypt.checkpw(request.form['password'].encode(), creds[1].encode()):
             session['seclogged_in'] = True
-            return redirect(url_for('login_endpoint'))
+            return redirect(url_for('login_route'))
         return 'Invalid credentials', 401
     return render_template_string('''
         <form method="post">
@@ -32,7 +39,7 @@ def securelogin():
 
 @app.before_request
 def require_login():
-    allowed = ['securelogin']
+    allowed = ['secure_login_route']
     ua = request.headers.get('User-Agent', '')
     if os.path.exists("user-agent.txt") and not os.path.getsize("user-agent.txt") == 0:
         with open("user-agent.txt", "r") as f:
@@ -49,7 +56,7 @@ def require_login():
     if ua != allowed_ua:
         return "Forbidden", 403
     elif request.endpoint not in allowed and not session.get('seclogged_in'):
-        return redirect(url_for('securelogin'))
+        return redirect(url_for('secure_login_route'))
 
 @app.route("/login")
 def login_route():
@@ -75,7 +82,9 @@ def logout_route():
 
 @app.route("/chats")
 def chats_route():
-	return waweb.chats(cache_numbers)
+    contact_msg = waweb.chats()
+    name = waweb.your_name()
+    return render_template("chats.html", contactmsg=contact_msg, yourname=name)
 
 @app.route("/processnum", methods=['POST'])
 def process_num_route():
@@ -183,5 +192,4 @@ def down_route():
     session['flash'] = error
     return redirect(url_for("chat_session", num=num))
 
-app = Flask(__name__)
-app.secret_key = sec_key(app)
+
