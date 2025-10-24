@@ -2,7 +2,6 @@ from datetime import datetime
 import base64
 import os
 import emoji
-import bcrypt
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
