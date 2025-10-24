@@ -1,11 +1,7 @@
 from datetime import datetime
 import base64
-import threading
 import os
-import ast
 import emoji
-from flask import Flask, Response, render_template, session, render_template_string, redirect, url_for, request
-from werkzeug.utils import secure_filename
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
@@ -13,25 +9,8 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-USERNAME = ""
-PASSWORD = ""
-
-if not USERNAME and not PASSWORD:
-    if os.path.exists("cred.txt") and not os.path.getsize("cred.txt") == 0:
-        with open("cred.txt", "r") as f:
-            USERNAME = f.readline().strip('\n')
-            PASSWORD = f.readline()
-    else:
-        with open("cred.txt", "w") as f:
-            USERNAME = input("Username for secure login: ")
-            PASSWORD = input("Password for secure login: ")
-            f.write(f"{USERNAME}\n")
-            f.write(PASSWORD)
-            print("Credentials initialized, re-run app with gunicorn command in README.")
-            exit()
 
 chrome_options = webdriver.ChromeOptions()
-
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument(f"--user-data-dir={os.getcwd()}/chrome_user_data")
@@ -56,9 +35,6 @@ else:
 driver.get("https://web.whatsapp.com/")
 print("Chromedriver Version: ", driver.capabilities["chrome"]["chromedriverVersion"])
 media_download = {}
-session_reload = {}
-mediainfo = {}
-pre = {'preload': 0}
 
 def login():
     if os.path.exists("static/images/qrcode.png"):
@@ -77,6 +53,75 @@ def login():
         print(f"Directory '{directory}' created.")
     with open("static/images/qrcode.png", "wb") as f:
         f.write(canvas_png)
+
+def logged_in():
+    cookie = driver.execute_script("return localStorage;")
+    if "readReceipts" in str(cookie):
+        return True
+    else:
+        return False
+
+def logout():
+    driver.execute_script("window.Store.AppState.logout();")
+
+def process_num():
+    contacts = driver.execute_script("return window.Store.Chat.map(contacts => contacts.formattedTitle);")
+    contact_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized);")
+
+    return zip(contacts,contact_num)
+
+def chat_session(num):
+    msgdata = driver.execute_script(f"""return document.msgdata = window.Store.Chat.get('{num}').msgs._models.map(m => ({{
+                                            body: m.body,
+                                            timestamp: m.t,
+                                            from: (m.from.server == "g.us" ? null : window.Store.Contact.get(m.from?._serialized)?.name)
+                                                || window.Store.Contact.get(m.author?._serialized)?.name
+                                                || m.senderObj.verifiedName || m.senderObj.pushname,
+                                            type: m.type,
+                                            filename: m.filename || "",
+                                            mimetype: m.mimetype,
+                                            caption: m.caption || "",
+                                            directPath: m.directPath,
+                                            encFilehash: m.encFilehash,
+                                            filehash: m.filehash,
+                                            mediaKey: m.mediaKey,
+                                            mediaKeyTimestamp: m.mediaKeyTimestamp,
+                                        }}));
+    """)
+    messages = gather_msg(msgdata)
+    # using name in contact (if available) or whatsapp name (verified for business acc, push for non business acc)
+    who = driver.execute_script("return document.msgdata.map(m => m.from);")
+    time = [datetime.fromtimestamp(timestamp["timestamp"]).time().strftime("%H:%M") for timestamp in msgdata]
+
+    messages.reverse()
+    who.reverse()
+    time.reverse()
+
+    who_msg_t = list(zip(who, messages, time))
+    return who_msg_t
+
+def down(num):
+   error = ""
+   tries = 0
+   driver.execute_script(f"document.lengthc = await window.Store.Chat.find('{num}')")
+   length_old = driver.execute_script("return document.lengthc.msgs.length")
+   length_new = driver.execute_script("return document.lengthc.msgs.length")
+   h_code = load_history(num)
+
+   if h_code == 1:
+      error = "No more messages to sync"
+   elif h_code == 4:
+      error = "Cannot sync history, only available on your phone."
+   else:
+       while length_old == length_new and tries != 10:
+           h_code = load_history(num)
+           load_msg(num)
+           driver.execute_script("window.Store.Cmd.closeActiveChat()")
+           length_new = driver.execute_script("return document.lengthc.msgs.length")
+           tries+=1
+       if length_old == length_new:
+           error = "History sync failed, please try again."
+   return error
 
 # everything needed for all current features
 def preload():
@@ -312,89 +357,19 @@ def decrypt_media(msg):
 
     return base64str
 
-def sec_key(app):
-    if os.path.exists("secret-key.txt") and not os.path.getsize("secret-key.txt") == 0:
-        with open("secret-key.txt", "r") as f:
-            return f.read()
-    else:
-        key = base64.b64encode(os.urandom(32)).decode()
-        with open("secret-key.txt", "w") as f:
-            f.write(key)
-            return key
+def your_name():
+    name = driver.execute_script("return window.Store.Contact.get(window.Store.User.getMaybeMePnUser()._serialized).name")
+    return name
 
-app = Flask(__name__)
-app.secret_key = sec_key(app)
-
-@app.route('/securelogin', methods=['GET', 'POST'])
-def securelogin():
-    if request.method == 'POST':
-        if request.form['username'] == USERNAME and request.form['password'] == PASSWORD:
-            session['seclogged_in'] = True
-            return redirect(url_for('login_endpoint'))
-        return 'Invalid credentials', 401
-    return render_template_string('''
-        <form method="post">
-          <input name="username">
-          <input name="password" type="password">
-          <input type="submit">
-        </form>
-    ''')
-
-@app.before_request
-def require_login():
-    allowed = ['securelogin']
-    ua = request.headers.get('User-Agent', '')
-    if os.path.exists("user-agent.txt") and not os.path.getsize("user-agent.txt") == 0:
-        with open("user-agent.txt", "r") as f:
-            allowed_ua = f.read()
-    else:
-        with open("user-agent.txt", "w") as f:
-            allowed_ua = ua
-            f.write(ua)
- 
-
-    if pre['preload'] == 0:
-        preload()
-        pre['preload'] = 1
-    if ua != allowed_ua:
-        return "Forbidden", 403
-    elif request.endpoint not in allowed and not session.get('seclogged_in'):
-        return redirect(url_for('securelogin'))
-
-@app.route("/login")
-def login_endpoint():
-    response = ""
-    if not session.get('logged_in'):
-        login()
-        response = render_template('qr.html')
-    else:
-        response = "<p>Ur logged in bro..go to /chats</p>"
-    return response
-
-@app.route("/logged-in")
-def logged_in():
-    if session.get('logged_in'):
-        return "<p>Ur in...</p>"
-    return "<p>U aint in bro...</p>"
-
-@app.route("/logout")
-def logout():
-    driver.execute_script("window.Store.AppState.logout();")
-    session.clear()
-    return redirect(url_for('securelogin'))
-
-@app.route("/chats")
 def chats():
-    if not session.get('logged_in'):
-        if WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, "[aria-label='Chats']"))):
-            session['logged_in'] = True
+    if WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, '[aria-label="Chats"]'))):
+        pass
+    else:
+        print("Chats are not visible yet")
+        return False
     latest_msg = []
     all_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized)")
     contacts = driver.execute_script("return window.Store.Chat.map(contacts => contacts.formattedTitle);")
-    if not session_reload:
-        for num in all_num:
-            session_reload[num] = 0
-
     for num in all_num:
         load_c = load_chat(num)
         if load_c is None:
@@ -412,160 +387,4 @@ def chats():
                
     load_send()
     contact_msg = dict(zip(contacts, all_l_msg))
-    yourname = driver.execute_script("return window.Store.Contact.get(window.Store.User.getMaybeMePnUser()._serialized).name")
-
-    return render_template("chats.html", contactmsg=contact_msg, yourname=yourname)
-
-@app.route("/processnum", methods=['POST'])
-def process_num():
-    contacts = driver.execute_script("return window.Store.Chat.map(contacts => contacts.formattedTitle);")
-    contact_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized);")
-
-    name_num = dict(zip(contacts, contact_num))
-    num = request.form.get("contact")
-    return redirect(url_for("chat_session", num=name_num.get(num)))
-
-@app.route("/chatsession")
-def chat_session():
-    num = request.args.get("num", None)
-    error = session.pop('flash', "")
-    if num is None:
-        return "<p>No chats available</p>"
-    if session_reload[num] == 0:
-        load_msg(num)
-        session_reload[num] += 1
-    msgdata = driver.execute_script(f"""return document.msgdata = window.Store.Chat.get('{num}').msgs._models.map(m => ({{
-                                            body: m.body,
-                                            timestamp: m.t,
-                                            from: (m.from.server == "g.us" ? null : window.Store.Contact.get(m.from?._serialized)?.name)
-                                                || window.Store.Contact.get(m.author?._serialized)?.name
-                                                || m.senderObj.verifiedName || m.senderObj.pushname,
-                                            type: m.type,
-                                            filename: m.filename || "",
-                                            mimetype: m.mimetype,
-                                            caption: m.caption || "",
-                                            directPath: m.directPath,
-                                            encFilehash: m.encFilehash,
-                                            filehash: m.filehash,
-                                            mediaKey: m.mediaKey,
-                                            mediaKeyTimestamp: m.mediaKeyTimestamp,
-                                        }}));
-    """)
-
-    messages = gather_msg(msgdata)
-    # using name in contact (if available) or whatsapp name (verified for business acc, push for non business acc)
-    who = driver.execute_script("return document.msgdata.map(m => m.from);")
-    time = [datetime.fromtimestamp(timestamp["timestamp"]).time().strftime("%H:%M") for timestamp in msgdata]
-
-    messages.reverse()
-    who.reverse()
-    time.reverse()
-
-    who_msg_t = list(zip(who, messages, time))
-    return render_template("messages.html", who_msg_t=who_msg_t, num=num, error=error)
-
-@app.route("/send", methods=['POST'])
-def send():
-    num = request.form.get("num")
-    msg = request.form.get("sendbox")
-    fileupload = request.files['file']
-    filename = secure_filename(fileupload.filename)
-    file_bytes = fileupload.read()
-
-    if mediainfo and request.method == 'POST':
-        mediainfo.clear()
-
-    if fileupload:
-        if fileupload.filename == '' or not file_bytes:
-            error = "File upload failed, check file name for any special characters."
-            session['flash'] = error
-            return redirect(url_for("chat_session", num=num))
-        else:
-            mimetype = fileupload.content_type
-            file_base64 = base64.b64encode(file_bytes).decode('utf-8')
-            mediainfo["data"] = file_base64
-            mediainfo["mimetype"] = mimetype
-            mediainfo["filename"] = filename
-
-    # if there is file attached
-    if mediainfo:
-        checkbox = request.form.get("asattach")
-        if checkbox == "yes":
-            as_attach = "true"
-        else:
-            as_attach = "false"
-        media_send(num, mediainfo, msg, as_attach)
-    # plain text
-    else:
-        send_message(num, msg)
-    return redirect(url_for("chat_session", num=num))
-
-@app.route("/downmedia", methods=['POST', 'GET'])
-def download_media():
-    if media_download and request.method == 'POST':
-        media_download.clear()
-
-    if not media_download and request.method == 'POST':
-        media = request.form.get("media")
-        media_type = request.form.get("type")
-        filename = request.form.get("filename")
-        mimetype = request.form.get("mimetype")
-
-        media_download["type"] = media_type
-        media_download["media"] = media
-        media_download["filename"] = filename
-        media_download["mimetype"] = mimetype
-
-    if media_download["type"] == "image":
-        file_bytes = base64.b64decode(media_download["media"])
-        response = Response(file_bytes, mimetype="image/jpeg")
-        response.headers["Content-Disposition"] = "attachment; filename=image.jpg"
-
-    elif media_download["type"] == "video":
-        video = ast.literal_eval(media_download["media"])
-        file_bytes = base64.b64decode(decrypt_media(video))
-        response = Response(file_bytes, mimetype="video/mp4")
-        response.headers["Content-Disposition"] = "attachment; filename=video.mp4"
-
-    elif media_download["type"] == "audio":
-        audio = ast.literal_eval(media_download["media"])
-        file_bytes = base64.b64decode(decrypt_media(audio))
-        response = Response(file_bytes, mimetype="audio/mpeg")
-        response.headers["Content-Disposition"] = "attachment; filename=audio.mp3"
-
-    elif media_download["type"] == "document":
-        document = ast.literal_eval(media_download["media"])
-        file_bytes = base64.b64decode(decrypt_media(document))
-        response = Response(file_bytes, mimetype=media_download["mimetype"])
-        response.headers["Content-Disposition"] = f"""attachment; filename={media_download["filename"]}"""
-
-    if request.method == 'GET':
-        media_download.clear()
-
-    return response
-
-@app.route("/pgdown", methods=['POST'])
-def down():
-    num = request.form.get("num")
-    error = ""
-    tries = 0
-    driver.execute_script(f"document.lengthc = await window.Store.Chat.find('{num}')")
-    length_old = driver.execute_script("return document.lengthc.msgs.length")
-    length_new = driver.execute_script("return document.lengthc.msgs.length")
-    h_code = load_history(num)
-
-    if h_code == 1:
-       error = "No more messages to sync"
-    elif h_code == 4:
-       error = "Cannot sync history, only available on your phone."
-    else:
-        while length_old == length_new and tries != 10:
-            h_code = load_history(num)
-            load_msg(num)
-            driver.execute_script("window.Store.Cmd.closeActiveChat()")
-            length_new = driver.execute_script("return document.lengthc.msgs.length")
-            tries+=1
-        if length_old == length_new:
-            error = "History sync failed, please try again."
-    session['flash'] = error
-    return redirect(url_for("chat_session", num=num))
+    return contact_msg

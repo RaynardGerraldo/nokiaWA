@@ -30,7 +30,7 @@ pip install -r requirements.txt
 ```
 Then, input credentials needed for /securelogin:
 ```
-flask --app waweb run
+flask --app routes run
 ```
 
 ---
@@ -39,7 +39,7 @@ flask --app waweb run
 
 ```bash
 cd nokiaWA/
-gunicorn waweb:app -b 127.0.0.1:5000 --workers 3
+flask --app routes run
 ```
 
 Then:
@@ -63,6 +63,23 @@ Then:
 -  Download files (ZIP, PDF, DOCX, XLSX, etc.)
 
 ---
+
+
+## Endpoints/Routes
+
+- /securelogin: login before login, only user with creds is allowed
+- /login: whatsapp qr code scan
+- /logged-in: check if you are logged in or not
+- /chats: list of whatsapp chats
+- /processnum: passes number to be processed
+- /chatsession: chat session for every number
+- /send: send messages
+- /downmedia: download media
+- /pgdown: down button to load older messages
+- /logout: logout from both whatsapp login and securelogin
+
+---
+
 
 ##  Chromedriver Instruction
 
