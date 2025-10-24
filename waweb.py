@@ -10,6 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+
 def secure_login():
     if os.path.exists("cred.txt") and not os.path.getsize("cred.txt") == 0:
         with open("cred.txt", "r") as f:
@@ -25,7 +26,6 @@ def secure_login():
     return [USERNAME,PASSWORD]
 
 chrome_options = webdriver.ChromeOptions()
-
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")
 chrome_options.add_argument(f"--user-data-dir={os.getcwd()}/chrome_user_data")
@@ -68,6 +68,13 @@ def login():
         print(f"Directory '{directory}' created.")
     with open("static/images/qrcode.png", "wb") as f:
         f.write(canvas_png)
+
+def logged_in():
+    cookie = driver.execute_script("return localStorage;")
+    if "readReceipts" in str(cookie):
+        return True
+    else:
+        return False
 
 def logout():
     driver.execute_script("window.Store.AppState.logout();")

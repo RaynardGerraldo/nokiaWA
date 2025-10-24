@@ -19,15 +19,24 @@ def sec_key(app):
 
 app = Flask(__name__)
 app.secret_key = sec_key(app)
-pre = {'preload': 0}
 mediainfo = {}
+# preload before logging-in, it works
+waweb.preload()
 
 @app.route('/securelogin', methods=['GET', 'POST'])
 def secure_login_route():
+    if request.method == 'GET' and 'seclogged_in' in session:
+        if session['seclogged_in']:
+            if waweb.logged_in():
+                return redirect(url_for('chats_route'))
+            return redirect(url_for('login_route'))
+
     if request.method == 'POST':
         creds = waweb.secure_login()
         if request.form['username'] == creds[0] and bcrypt.checkpw(request.form['password'].encode(), creds[1].encode()):
             session['seclogged_in'] = True
+            if waweb.logged_in():
+                return redirect(url_for('chats_route'))
             return redirect(url_for('login_route'))
         return 'Invalid credentials', 401
     return render_template_string('''
@@ -50,10 +59,6 @@ def require_login():
             allowed_ua = ua
             f.write(ua)
  
-    # pre load everything before even logging in to whatsapp, it works.
-    if pre['preload'] == 0:
-        waweb.preload()
-        pre['preload'] = 1
     if ua != allowed_ua:
         return "Forbidden", 403
     elif request.endpoint not in allowed and not session.get('seclogged_in'):
@@ -62,24 +67,25 @@ def require_login():
 @app.route("/login")
 def login_route():
     response = ""
-    if not session.get('logged_in'):
+    if not waweb.logged_in():
         waweb.login()
         response = render_template('qr.html')
+        return response
     else:
-        response = "<p>Ur logged in bro..go to /chats</p>"
-    return response
+        return redirect(url_for('chats_route'))
 
 @app.route("/logged-in")
 def logged_in():
-    if session.get('logged_in'):
-        return "<p>Ur in...</p>"
-    return "<p>U aint in bro...</p>"
+    if waweb.logged_in():
+        return "<p>You are logged in</p>"
+    return "<p>You are not logged in</p>"
 
 @app.route("/logout")
 def logout_route():
     waweb.logout()
-    session.clear()
-    return redirect(url_for('securelogin'))
+    session['seclogged_in'] = False
+    print(session)
+    return redirect(url_for('secure_login_route'))
 
 @app.route("/chats")
 def chats_route():
