@@ -28,7 +28,7 @@ pip install -r requirements.txt
 ```
 Then, input credentials needed for /securelogin:
 ```
-flask --app waweb run
+flask --app routes run
 ```
 
 ---
@@ -37,7 +37,7 @@ flask --app waweb run
 
 ```bash
 cd nokiaWA/
-gunicorn waweb:app -b 127.0.0.1:5000 --workers 3
+flask --app routes run
 ```
 
 Then:
