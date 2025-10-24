@@ -11,20 +11,6 @@ from selenium.webdriver.common.by import By
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
 
-def secure_login():
-    if os.path.exists("cred.txt") and not os.path.getsize("cred.txt") == 0:
-        with open("cred.txt", "r") as f:
-            USERNAME = f.readline().strip('\n')
-            PASSWORD = f.readline()
-    else:
-        with open("cred.txt", "w") as f:
-            USERNAME = input("Username for secure login: ")
-            PASSWORD = input("Password for secure login: ")
-            f.write(f"{USERNAME}\n")
-            hashed = bcrypt.hashpw(PASSWORD.encode(), bcrypt.gensalt())
-            f.write(hashed.decode())
-    return [USERNAME,PASSWORD]
-
 chrome_options = webdriver.ChromeOptions()
 chrome_options.add_argument("--no-sandbox")
 chrome_options.add_argument("--disable-dev-shm-usage")

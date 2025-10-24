@@ -6,6 +6,8 @@ from werkzeug.utils import secure_filename
 from flask import Flask, Response, render_template, session, render_template_string, redirect, url_for, request
 import waweb
 
+cred = {'USERNAME': "", 'PASSWORD': ""}
+
 def sec_key(app):
     if os.path.exists("secret-key.txt") and not os.path.getsize("secret-key.txt") == 0:
         with open("secret-key.txt", "r") as f:
@@ -16,9 +18,27 @@ def sec_key(app):
             f.write(key)
             return key
 
+def secure_login():
+    if os.path.exists("cred.txt") and not os.path.getsize("cred.txt") == 0:
+        with open("cred.txt", "r") as f:
+            cred['USERNAME'] = f.readline().strip('\n')
+            cred['PASSWORD'] = f.readline()
+    else:
+       with open("cred.txt", "w") as f:
+          USERNAME = input("Username for secure login: ")
+          PASSWORD = input("Password for secure login: ")
+          f.write(f"{USERNAME}\n")
+          hashed = bcrypt.hashpw(PASSWORD.encode(), bcrypt.gensalt())
+          f.write(hashed.decode())
+          print("Creds initialized, re-execute the app")
+          exit()
+
+# init cred before flask run
+secure_login()
 app = Flask(__name__)
 app.secret_key = sec_key(app)
 mediainfo = {}
+
 # preload before logging-in, it works
 waweb.preload()
 
@@ -28,6 +48,10 @@ def root():
 
 @app.route('/securelogin', methods=['GET', 'POST'])
 def secure_login_route():
+    # init cred post logout
+    if not cred.get('PASSWORD'):
+        secure_login()
+
     if request.method == 'GET' and 'seclogged_in' in session:
         if session['seclogged_in']:
             if waweb.logged_in():
@@ -35,8 +59,7 @@ def secure_login_route():
             return redirect(url_for('login_route'))
 
     if request.method == 'POST':
-        creds = waweb.secure_login()
-        if request.form['username'] == creds[0] and bcrypt.checkpw(request.form['password'].encode(), creds[1].encode()):
+        if request.form['username'] == cred.get('USERNAME') and bcrypt.checkpw(request.form['password'].encode(), cred.get('PASSWORD').encode()):
             session['seclogged_in'] = True
             if waweb.logged_in():
                 return redirect(url_for('chats_route'))
@@ -85,6 +108,8 @@ def logged_in():
 def logout_route():
     waweb.logout()
     session['seclogged_in'] = False
+    cred['USERNAME'] = ""
+    cred['PASSWORD'] = ""
     print(session)
     return redirect(url_for('secure_login_route'))
 
