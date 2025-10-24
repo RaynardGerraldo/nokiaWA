@@ -22,6 +22,10 @@ mediainfo = {}
 # preload before logging-in, it works
 waweb.preload()
 
+@app.route('/')
+def root():
+    return redirect(url_for('secure_login_route'))
+
 @app.route('/securelogin', methods=['GET', 'POST'])
 def secure_login_route():
     if request.method == 'GET' and 'seclogged_in' in session:
@@ -65,11 +69,9 @@ def require_login():
 
 @app.route("/login")
 def login_route():
-    response = ""
     if not waweb.logged_in():
         waweb.login()
-        response = render_template('qr.html')
-        return response
+        return render_template('qr.html')
     else:
         return redirect(url_for('chats_route'))
 
