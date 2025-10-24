@@ -5,7 +5,6 @@ import base64
 from werkzeug.utils import secure_filename
 from flask import Flask, Response, render_template, session, render_template_string, redirect, url_for, request
 import waweb
-import run
 
 def sec_key(app):
     if os.path.exists("secret-key.txt") and not os.path.getsize("secret-key.txt") == 0:
@@ -176,9 +175,6 @@ def download_media():
         file_bytes = base64.b64decode(waweb.decrypt_media(document))
         response = Response(file_bytes, mimetype=mimetype)
         response.headers["Content-Disposition"] = f"""attachment; filename={filename}"""
-
-    #if request.method == 'GET':
-        #media_download.clear()
 
     return response
 
