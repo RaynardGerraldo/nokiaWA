@@ -62,6 +62,23 @@ Then:
 
 ---
 
+
+## Endpoints/Routes
+
+- /securelogin: login before login, only user with creds is allowed
+- /login: whatsapp qr code scan
+- /logged-in: check if you are logged in or not
+- /chats: list of whatsapp chats
+- /processnum: passes number to be processed
+- /chatsession: chat session for every number
+- /send: send messages
+- /downmedia: download media
+- /pgdown: down button to load older messages
+- /logout: logout from both whatsapp login and securelogin
+
+---
+
+
 ##  Chromedriver Instruction
 
 Only follow this section if you experience the errors in the [notice](#notice) above. Default ChromeDriver should work fine otherwise.
