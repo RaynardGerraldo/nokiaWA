@@ -38,7 +38,7 @@ secure_login()
 app = Flask(__name__)
 app.secret_key = sec_key(app)
 mediainfo = {}
-
+media_download = {}
 # preload before logging-in, it works
 waweb.preload()
 
@@ -174,34 +174,45 @@ def send():
 
 @app.route("/downmedia", methods=['POST', 'GET'])
 def download_media():
-    if request.method == 'POST':
+    if media_download and request.method == 'POST':
+        media_download.clear()
+
+    if not media_download and request.method == 'POST':
         media = request.form.get("media")
         media_type = request.form.get("type")
         filename = request.form.get("filename")
         mimetype = request.form.get("mimetype")
 
-    if media_type == "image":
-        file_bytes = base64.b64decode(media)
+        media_download["type"] = media_type
+        media_download["media"] = media
+        media_download["filename"] = filename
+        media_download["mimetype"] = mimetype
+
+    if media_download["type"] == "image":
+        file_bytes = base64.b64decode(media_download["media"])
         response = Response(file_bytes, mimetype="image/jpeg")
         response.headers["Content-Disposition"] = "attachment; filename=image.jpg"
 
-    elif media_type == "video":
-        video = ast.literal_eval(media)
-        file_bytes = base64.b64decode(waweb.decrypt_media(video))
+    elif media_download["type"] == "video":
+        video = ast.literal_eval(media_download["media"])
+        file_bytes = base64.b64decode(decrypt_media(video))
         response = Response(file_bytes, mimetype="video/mp4")
         response.headers["Content-Disposition"] = "attachment; filename=video.mp4"
 
-    elif media_type == "audio":
-        audio = ast.literal_eval(media)
-        file_bytes = base64.b64decode(waweb.decrypt_media(audio))
+    elif media_download["type"] == "audio":
+        audio = ast.literal_eval(media_download["media"])
+        file_bytes = base64.b64decode(decrypt_media(audio))
         response = Response(file_bytes, mimetype="audio/mpeg")
         response.headers["Content-Disposition"] = "attachment; filename=audio.mp3"
 
-    elif media_type == "document":
-        document = ast.literal_eval(media)
-        file_bytes = base64.b64decode(waweb.decrypt_media(document))
-        response = Response(file_bytes, mimetype=mimetype)
-        response.headers["Content-Disposition"] = f"""attachment; filename={filename}"""
+    elif media_download["type"] == "document":
+        document = ast.literal_eval(media_download["media"])
+        file_bytes = base64.b64decode(decrypt_media(document))
+        response = Response(file_bytes, mimetype=media_download["mimetype"])
+        response.headers["Content-Disposition"] = f"""attachment; filename={media_download["filename"]}"""
+
+    if request.method == 'GET':
+        media_download.clear()
 
     return response
 
