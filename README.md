@@ -39,7 +39,7 @@ flask --app routes run
 
 ```bash
 cd nokiaWA/
-flask --app routes run
+flask --app routes run --host=0.0.0.0
 ```
 
 Then:

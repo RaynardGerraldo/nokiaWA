@@ -1,5 +1,5 @@
 emoji==1.5.0
 Flask==3.1.2
-python_bcrypt==0.3.2
+bcrypt==5.0.0
 selenium==4.37.0
 Werkzeug==3.1.3
