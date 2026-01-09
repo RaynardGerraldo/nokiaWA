@@ -150,7 +150,7 @@ def preload():
 def load_history(num):
     driver.execute_script(f"document.chatWid = window.Store.WidFactory.createWid('{num}');")
     driver.execute_script("document.chat = window.Store.Chat.get(document.chatWid) ?? (await window.Store.Chat.find(document.chatWid));")
-    driver.execute_script("await window.Store.Cmd.openChatBottom(document.chat);")
+    driver.execute_script("await window.Store.Cmd.openChatBottom({'chat':document.chat});")
     h_code = driver.execute_script("""if(document.chat.endOfHistoryTransferType == 0){
                                             await window.Store.HistorySync.sendPeerDataOperationRequest(3, {
                                             chatId: document.chat.id
