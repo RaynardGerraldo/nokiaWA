@@ -327,14 +327,20 @@ def gather_msg(msgs):
     return messages
 
 def decrypt_media(msg):
-    driver.execute_script(f"""try {{ document.decryptedMedia = await window.Store.DownloadManager.downloadAndMaybeDecrypt({{
+    driver.execute_script(f"""try {{ 
+                              document.mockQpl = {{
+                                addAnnotations: function() {{ return this; }},
+                                addPoint: function() {{ return this; }}
+                              }};
+                              document.decryptedMedia = await window.Store.DownloadManager.downloadAndMaybeDecrypt({{
                                 directPath: "{msg["directPath"]}",
                                 encFilehash: "{msg["encFilehash"]}",
                                 filehash: "{msg["filehash"]}",
                                 mediaKey: "{msg["mediaKey"]}",
                                 mediaKeyTimestamp: "{msg["mediaKeyTimestamp"]}",
                                 type: "{msg["type"]}",
-                                signal: (new AbortController).signal
+                                signal: (new AbortController).signal,
+                                downloadQpl: document.mockQpl
                               }})}} 
                               catch(e) {{ if(e.status && e.status == 404) document.decryptedMedia = undefined }};
     """)
