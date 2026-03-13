@@ -115,9 +115,11 @@ def logout_route():
 
 @app.route("/chats")
 def chats_route():
+    if not waweb.logged_in():
+        return redirect(url_for("login_route"))
     contact_msg = waweb.chats()
     if "Not visible" in contact_msg:
-        return render_template("chats.html", contactmsg=contact_msg, yourname="")
+        return f"<h1>Error</h1><p>{contact_msg['Not visible']}</p>"
     name = waweb.your_name()
     return render_template("chats.html", contactmsg=contact_msg, yourname=name)
 
