@@ -116,6 +116,8 @@ def logout_route():
 @app.route("/chats")
 def chats_route():
     contact_msg = waweb.chats()
+    if contact_msg["Not visible"] == "Chats are not visible yet, try reloading":
+        return render_template("chats.html", contactmsg=contact_msg, yourname="")
     name = waweb.your_name()
     return render_template("chats.html", contactmsg=contact_msg, yourname=name)
 

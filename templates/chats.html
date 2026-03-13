@@ -31,7 +31,7 @@
                   {% endfor %}
                 {% endif %}
             {% else %}
-                {% if msg == "No message history" or msg == "Message deleted" %}
+                {% if msg == "No message history" or msg == "Message deleted" or msg == "Chats are not visible yet, try reloading" %}
                     <i>{{ msg }}</i>
                 {% else %}
                     <p>{{ msg }}</p>

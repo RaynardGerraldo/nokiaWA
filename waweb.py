@@ -368,11 +368,10 @@ def your_name():
     return name
 
 def chats():
-    if WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, '[aria-label="Chats"]'))):
-        pass
-    else:
-        print("Chats are not visible yet")
-        return False
+    try:
+        WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.CSS_SELECTOR, '[aria-label="Chats"]')))
+    except:
+        return {"Not visible": "Chats are not visible yet, try reloading"}
     latest_msg = []
     all_num = driver.execute_script("return window.Store.Chat.map(contacts => contacts.id._serialized)")
     contacts = driver.execute_script("return window.Store.Chat.map(contacts => contacts.formattedTitle);")
