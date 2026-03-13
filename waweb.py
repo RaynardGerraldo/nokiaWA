@@ -55,11 +55,11 @@ def login():
         f.write(canvas_png)
 
 def logged_in():
-    cookie = driver.execute_script("return localStorage;")
-    if "readReceipts" in str(cookie):
-        return True
-    else:
-        return False
+    return driver.execute_script("""
+        return !!(window.localStorage.getItem('last-wid-md') ||
+                  window.localStorage.getItem('last-wid') ||
+                  window.localStorage.getItem('WALid'));
+    """)
 
 def logout():
     driver.execute_script("window.Store.AppState.logout();")
