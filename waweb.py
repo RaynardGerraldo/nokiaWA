@@ -1,6 +1,7 @@
 from datetime import datetime
 import base64
 import os
+import time
 import emoji
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -103,6 +104,7 @@ def chat_session(num):
 def down(num):
    error = ""
    tries = 0
+   backoff = 0.50
    driver.execute_script(f"document.lengthc = await window.Store.Chat.find('{num}')")
    length_old = driver.execute_script("return document.lengthc.msgs.length")
    length_new = driver.execute_script("return document.lengthc.msgs.length")
@@ -113,12 +115,14 @@ def down(num):
    elif h_code == 4:
       error = "Cannot sync history, only available on your phone."
    else:
-       while length_old == length_new and tries != 10:
+       while length_old == length_new and tries != 3:
            h_code = load_history(num)
            load_msg(num)
            driver.execute_script("window.Store.Cmd.closeActiveChat()")
            length_new = driver.execute_script("return document.lengthc.msgs.length")
            tries+=1
+           time.sleep(backoff)
+           backoff+=1.50
        if length_old == length_new:
            error = "History sync failed, please try again."
    return error
